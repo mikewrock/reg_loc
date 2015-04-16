@@ -1,0 +1,9 @@
+<library path="lib/libradbot_dashboard">
+  <class name="radbot_dashboard/Radbot Dashboard"
+         type="radbot_dashboard::DashboardPanel"
+         base_class_type="rviz::Panel">
+    <description>
+      A panel containing controls for Radbot.
+    </description>
+  </class>
+</library>
