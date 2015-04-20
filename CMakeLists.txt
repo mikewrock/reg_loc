@@ -93,6 +93,7 @@ catkin_package(
 # include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_BINARY_DIR}
 )
 link_directories(${catkin_LIBRARY_DIRS})
 
@@ -117,10 +118,16 @@ set(SOURCE_FILES
   ${MOC_FILES}
 )
 
+set(radbot_dashboard_UIS
+  src/dashboard_panel.ui
+)
+
+qt4_wrap_ui(radbot_dashboard_UIS_H ${radbot_dashboard_UIS})
 
 ## Declare a cpp library
  add_library(${PROJECT_NAME} 
    ${SOURCE_FILES}
+   ${radbot_dashboard_UIS_H}
  )
 
 ## Declare a cpp executable
