@@ -48,11 +48,13 @@ void DashboardPanel::onAmclButton()
 {
   amcl_process_->start();
   qDebug()<<"Process started, PID:"<<amcl_process_->pid();
+  ui_.gmap_start_button->setDisabled(1);
 }
 void DashboardPanel::onGmappingButton()
 {
   gmapping_process_->start();
   qDebug()<<"Process started, PID:"<<gmapping_process_->pid();
+  ui_.amcl_start_button->setDisabled(1);
 }
 void DashboardPanel::onStopNavButton()
 {
@@ -113,8 +115,13 @@ void DashboardPanel::onProcessError(QProcess::ProcessError error)
 void DashboardPanel::onProcessExit(int exitCode, QProcess::ExitStatus exitStatus)
 {
   Process* tmp = dynamic_cast<Process*>(sender());
-  qDebug()<<"Process:"<<tmp->path<<" ended with code:"<<exitCode<<" and Status:"<<exitStatus;
-  //qDebug()<<amcl_process_->readAllStandardOutput();
+  qDebug()<<"Process:"<<tmp->path<<" ended with code:"
+          <<exitCode<<" and Status:"<<exitStatus;
+                                                                                  //qDebug()<<amcl_process_->readAllStandardOutput();
+  if(tmp==amcl_process_)                                                          //kind sketchy check
+    ui_.gmap_start_button->setDisabled(0);
+  else if (tmp==gmapping_process_)
+    ui_.amcl_start_button->setDisabled(0);
 }
 
 /*
@@ -126,7 +133,6 @@ void DashboardPanel::save( rviz::Config config ) const
   config.mapSetValue("Map Selection", ui_.map_combo->currentText());
 }
 
-// Load all configuration data for this panel from the given Config object.
 void DashboardPanel::load( const rviz::Config& config )
 {
   rviz::Panel::load( config );
