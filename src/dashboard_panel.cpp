@@ -17,6 +17,8 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   gmapping_process_->program = "roslaunch";
   amcl_process_->path= QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/amcl.launch");
   gmapping_process_->path= QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping.launch");
+  amcl_process_->setProcessChannelMode(QProcess::ForwardedChannels);
+  gmapping_process_->setProcessChannelMode(QProcess::ForwardedChannels);
 
   //Map Selection Setup
   map_dir_ = new QDir(QDir::home());
@@ -27,8 +29,12 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   //SIGNAL connections
   connect(ui_.amcl_start_button, SIGNAL(clicked()), this, SLOT(onAmclButton()));
   connect(ui_.save_button, SIGNAL(clicked()), this, SLOT(onSaveButton()));
+  connect(ui_.gmap_start_button, SIGNAL(clicked()), this, SLOT(onGmappingButton()));
+  connect(ui_.navigation_stop_button, SIGNAL(clicked()), this, SLOT(onStopNavButton()));
   connect(amcl_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
   connect(amcl_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
+  connect(gmapping_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
+  connect(gmapping_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(this, SIGNAL(mapsChanged()), this, SLOT(onMapsChanged()));
   connect(ui_.map_combo, SIGNAL(activated(int)), this, SLOT(onMapSelect(int)));
 
@@ -42,6 +48,16 @@ void DashboardPanel::onAmclButton()
 {
   amcl_process_->start();
   qDebug()<<"Process started, PID:"<<amcl_process_->pid();
+}
+void DashboardPanel::onGmappingButton()
+{
+  gmapping_process_->start();
+  qDebug()<<"Process started, PID:"<<gmapping_process_->pid();
+}
+void DashboardPanel::onStopNavButton()
+{
+  amcl_process_->terminate();
+  gmapping_process_->terminate();
 }
 
 void DashboardPanel::onSaveButton()
@@ -85,7 +101,6 @@ void DashboardPanel::onMapSelect(int index)
   emit configChanged();
   //qDebug()<< amcl_process_->args;
 }
-
 
 /*
  * Process Helpers

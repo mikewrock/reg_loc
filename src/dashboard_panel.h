@@ -42,9 +42,12 @@ public:
 
 protected Q_SLOTS:
   void onAmclButton();
+  void onSaveButton();
+  void onGmappingButton();
+  void onStopNavButton();
+  void onExplorationButton();
   void onProcessError(QProcess::ProcessError error);
   void onProcessExit(int exitCode, QProcess::ExitStatus exitStatus);
-  void onSaveButton();
   void onMapsChanged();
   void onMapSelect(int index);
 Q_SIGNALS:
