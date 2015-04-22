@@ -82,6 +82,7 @@ void DashboardPanel::onMapSelect(int index)
       amcl_process_->args.append(arg);
   }
   emit mapsChanged();
+  emit configChanged();
   //qDebug()<< amcl_process_->args;
 }
 
@@ -107,12 +108,18 @@ void DashboardPanel::onProcessExit(int exitCode, QProcess::ExitStatus exitStatus
 void DashboardPanel::save( rviz::Config config ) const
 {
   rviz::Panel::save( config );
+  config.mapSetValue("Map Selection", ui_.map_combo->currentText());
 }
 
 // Load all configuration data for this panel from the given Config object.
 void DashboardPanel::load( const rviz::Config& config )
 {
   rviz::Panel::load( config );
+  QString map;
+  if( config.mapGetString( "Map Selection", &map))
+  {
+    ui_.map_combo->setCurrentIndex(ui_.map_combo->findText(map));
+  }
 }
 }
 
