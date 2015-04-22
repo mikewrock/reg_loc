@@ -103,7 +103,7 @@ include(${QT_USE_FILE})
 
 ## I prefer the Qt signals and slots to avoid defining "emit", "slots",
 ## etc because they can conflict with boost signals, so define QT_NO_KEYWORDS here.
-add_definitions(-DQT_NO_KEYWORDS)
+#add_definitions(-DQT_NO_KEYWORDS)
 
 ## Here we specify which header files need to be run through "moc",
 ## Qt's meta-object compiler.

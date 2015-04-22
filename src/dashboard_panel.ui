@@ -18,11 +18,11 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>321</width>
+     <width>339</width>
      <height>891</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,0,0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0,0,0,0,0,0,0">
     <property name="sizeConstraint">
      <enum>QLayout::SetDefaultConstraint</enum>
     </property>
@@ -50,9 +50,6 @@
          <widget class="QLCDNumber" name="cpm_lcd">
           <property name="smallDecimalPoint">
            <bool>false</bool>
-          </property>
-          <property name="numDigits">
-           <number>5</number>
           </property>
           <property name="digitCount">
            <number>5</number>
@@ -99,8 +96,11 @@
      </widget>
     </item>
     <item>
+     <widget class="QComboBox" name="map_combo"/>
+    </item>
+    <item>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="1" column="0">
+      <item row="2" column="1">
        <widget class="QPushButton" name="gmap_start_button">
         <property name="enabled">
          <bool>true</bool>
@@ -134,7 +134,7 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="2">
+      <item row="1" column="1">
        <widget class="QPushButton" name="amcl_start_button">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -165,54 +165,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
-       <widget class="QPushButton" name="gmap_stop_button">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-          <horstretch>1</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>100</width>
-          <height>60</height>
-         </size>
-        </property>
-        <property name="baseSize">
-         <size>
-          <width>150</width>
-          <height>50</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Reset Map</string>
-        </property>
-        <property name="autoDefault">
-         <bool>false</bool>
-        </property>
-        <property name="flat">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeType">
-         <enum>QSizePolicy::Expanding</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>10</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="2" column="0">
+      <item row="1" column="3">
        <widget class="QPushButton" name="frontier_start_button">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
@@ -222,7 +175,7 @@
         </property>
         <property name="minimumSize">
          <size>
-          <width>100</width>
+          <width>128</width>
           <height>60</height>
          </size>
         </property>
@@ -242,6 +195,53 @@
          <bool>false</bool>
         </property>
        </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QPushButton" name="navigation_stop_button">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>60</height>
+         </size>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>150</width>
+          <height>50</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>Stop Navigation</string>
+        </property>
+        <property name="autoDefault">
+         <bool>false</bool>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeType">
+         <enum>QSizePolicy::Expanding</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>10</height>
+         </size>
+        </property>
+       </spacer>
       </item>
      </layout>
     </item>
@@ -323,7 +323,8 @@ Localization</string>
          </size>
         </property>
         <property name="text">
-         <string>Start Heatmap</string>
+         <string>Start Intensity
+map</string>
         </property>
         <property name="autoDefault">
          <bool>false</bool>
@@ -354,7 +355,8 @@ Localization</string>
          </size>
         </property>
         <property name="text">
-         <string>Stop Heatmap</string>
+         <string>Stop Intensity
+map</string>
         </property>
         <property name="autoDefault">
          <bool>false</bool>
@@ -417,6 +419,54 @@ Locations</string>
        </size>
       </property>
      </spacer>
+    </item>
+    <item>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <item row="0" column="0">
+       <widget class="QPushButton" name="stop_button">
+        <property name="minimumSize">
+         <size>
+          <width>120</width>
+          <height>120</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>15</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Stop
+All</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QGraphicsView" name="graphicsView">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>175</width>
+          <height>175</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="Line" name="line_4">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout_3">
@@ -488,10 +538,6 @@ Locations</string>
   </widget>
  </widget>
  <tabstops>
-  <tabstop>gmap_start_button</tabstop>
-  <tabstop>gmap_stop_button</tabstop>
-  <tabstop>frontier_start_button</tabstop>
-  <tabstop>amcl_start_button</tabstop>
   <tabstop>heatmap_start_button</tabstop>
   <tabstop>heatmap_stop_button</tabstop>
   <tabstop>sourceloc_run_button</tabstop>
