@@ -2,6 +2,7 @@
 #include "QDebug"
 #include <ros/package.h>
 #include "QFileDialog"
+#include "QDateTime"
 
 namespace radbot_dashboard
 {
@@ -22,6 +23,13 @@ DashboardPanel::DashboardPanel( QWidget* parent )
 
   //Map Selection Setup
   map_dir_ = new QDir(QDir::home());
+  // make RadbotMaps folder if it doesnt exist
+  if(!map_dir_->cd("RadbotMaps"))
+  {
+    map_dir_->mkdir("RadbotMaps");
+    if(!map_dir_->cd("RadbotMaps"))
+      qDebug()<<"ERORR Can't make directory for maps";
+  }
   map_dir_->setNameFilters(QStringList()<<"*.yaml");
   map_dir_->setFilter(QDir::Files);
   map_dir_->setSorting(QDir::Name);
@@ -66,6 +74,13 @@ void DashboardPanel::onSaveButton()
 {
   //QString fileName = QFileDialog::getOpenFileName(this,
   //    tr("Open Map"), QDir::homePath(), tr("Map Files (*.yaml)"));
+  QProcess* mapsaver = new QProcess;
+  mapsaver->setWorkingDirectory(map_dir_->absolutePath());
+  mapsaver->start("rosrun",QStringList()<<"map_server"<<"map_saver"<<"-f"
+                                        <<"Radbot_Map_"+QDateTime::currentDateTime().toString());
+  mapsaver->waitForFinished();
+  delete mapsaver;
+
   emit mapsChanged();
 }
 
