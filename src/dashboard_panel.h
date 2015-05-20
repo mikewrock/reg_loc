@@ -1,16 +1,19 @@
 #ifndef DASHBOARD_PANEL_H
 #define DASHBOARD_PANEL_H
 
-#include <ui_dashboard_panel.h>
-#include <QProcess>
-#include <QDir>
-#include <QFileInfo>
-
 #ifndef Q_MOC_RUN
 # include <ros/ros.h>
 
 # include <rviz/panel.h>
 #endif
+
+#include <ui_dashboard_panel.h>
+#include <QProcess>
+#include <QDir>
+#include <QFileInfo>
+#include <actionlib/client/simple_action_client.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <frontier_exploration/ExploreTaskAction.h>
 
 namespace radbot_dashboard
 {
@@ -46,6 +49,7 @@ protected Q_SLOTS:
   void onGmappingButton();
   void onStopNavButton();
   void onExplorationButton();
+  void onEstopButton();
   void onProcessError(QProcess::ProcessError error);
   void onProcessExit(int exitCode, QProcess::ExitStatus exitStatus);
   void onMapsChanged();
@@ -59,6 +63,7 @@ protected:
 
   Process* amcl_process_;
   Process* gmapping_process_;
+  Process* exploration_process_;
 
   QDir* map_dir_;
   QFileInfoList map_file_list_;

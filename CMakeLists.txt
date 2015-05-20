@@ -6,6 +6,9 @@ project(radbot_dashboard)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rviz
+  actionlib
+  actionlib_msgs
+  move_base_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -80,7 +83,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES radbot_dashboard
-#  CATKIN_DEPENDS roscpp
+  CATKIN_DEPENDS actionlib
 #  DEPENDS system_lib
 )
 

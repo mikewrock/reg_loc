@@ -11,15 +11,23 @@ DashboardPanel::DashboardPanel( QWidget* parent )
 {
   ui_.setupUi(this);
   setLayout(ui_.verticalLayout);
-//Process setup
+
+  //Process setup
   amcl_process_ = new Process(this);
   gmapping_process_ = new Process(this);
+  exploration_process_ = new Process(this);
   amcl_process_->program = "roslaunch";
   gmapping_process_->program = "roslaunch";
-  amcl_process_->path= QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/amcl.launch");
-  gmapping_process_->path= QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping.launch");
+  exploration_process_->program = "roslaunch";
+  amcl_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/amcl.launch");
+  gmapping_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping.launch");
+  exploration_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/frontier_exploration.launch");
   amcl_process_->setProcessChannelMode(QProcess::ForwardedChannels);
   gmapping_process_->setProcessChannelMode(QProcess::ForwardedChannels);
+  exploration_process_->setProcessChannelMode(QProcess::ForwardedChannels);
+
+  //action setup
+  //move_client_= new MoveBaseClient(std::string("move_base"),true);
 
   //Map Selection Setup
   map_dir_ = new QDir(QDir::home());
@@ -39,10 +47,14 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(ui_.save_button, SIGNAL(clicked()), this, SLOT(onSaveButton()));
   connect(ui_.gmap_start_button, SIGNAL(clicked()), this, SLOT(onGmappingButton()));
   connect(ui_.navigation_stop_button, SIGNAL(clicked()), this, SLOT(onStopNavButton()));
+  connect(ui_.frontier_start_button, SIGNAL(clicked()), this, SLOT(onExplorationButton()));
+  connect(ui_.stop_button, SIGNAL(clicked()), this, SLOT(onEstopButton()));
   connect(amcl_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
   connect(amcl_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(gmapping_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
   connect(gmapping_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
+  connect(exploration_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
+  connect(exploration_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(this, SIGNAL(mapsChanged()), this, SLOT(onMapsChanged()));
   connect(ui_.map_combo, SIGNAL(activated(int)), this, SLOT(onMapSelect(int)));
 
@@ -56,14 +68,23 @@ void DashboardPanel::onAmclButton()
 {
   amcl_process_->start();
   qDebug()<<"Process started, PID:"<<amcl_process_->pid();
-  ui_.gmap_start_button->setDisabled(1);
+  ui_.gmap_start_button->setDisabled(true);
 }
+
 void DashboardPanel::onGmappingButton()
 {
   gmapping_process_->start();
   qDebug()<<"Process started, PID:"<<gmapping_process_->pid();
-  ui_.amcl_start_button->setDisabled(1);
+  ui_.amcl_start_button->setDisabled(true);
+  ui_.frontier_start_button->setDisabled(false);
 }
+
+void DashboardPanel::onExplorationButton()
+{
+  exploration_process_->start();
+  qDebug()<<"Process started, PID:"<<exploration_process_->pid();
+}
+
 void DashboardPanel::onStopNavButton()
 {
   amcl_process_->terminate();
@@ -82,6 +103,27 @@ void DashboardPanel::onSaveButton()
   delete mapsaver;
 
   emit mapsChanged();
+}
+
+void DashboardPanel::onEstopButton()
+{
+  //cancel move_base goals
+  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_client("move_base",true);
+  move_client.waitForServer(ros::Duration(5.0));
+  if(move_client.isServerConnected())
+  {
+    move_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
+    qDebug()<<"WARNING: MoveBase canceled";
+  }
+
+  //stop exploration
+  actionlib::SimpleActionClient<frontier_exploration::ExploreTaskAction> explore_client("explore_server",true);
+  explore_client.waitForServer(ros::Duration(5.0));
+  if(explore_client.isServerConnected())
+  {
+    explore_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
+    qDebug()<<"WARNING: Exploration canceled";
+  }
 }
 
 /*
@@ -133,10 +175,16 @@ void DashboardPanel::onProcessExit(int exitCode, QProcess::ExitStatus exitStatus
   qDebug()<<"Process:"<<tmp->path<<" ended with code:"
           <<exitCode<<" and Status:"<<exitStatus;
                                                                                   //qDebug()<<amcl_process_->readAllStandardOutput();
-  if(tmp==amcl_process_)                                                          //kind sketchy check
-    ui_.gmap_start_button->setDisabled(0);
-  else if (tmp==gmapping_process_)
-    ui_.amcl_start_button->setDisabled(0);
+  if(tmp==amcl_process_){                                                          //kind sketchy check
+    ui_.gmap_start_button->setDisabled(false);
+    ui_.frontier_start_button->setDisabled(true);
+    exploration_process_->terminate();
+  }
+  else if (tmp==gmapping_process_){
+    ui_.amcl_start_button->setDisabled(false);
+    ui_.frontier_start_button->setDisabled(true);
+    exploration_process_->terminate();
+  }
 }
 
 /*
