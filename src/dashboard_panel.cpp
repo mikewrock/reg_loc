@@ -1,8 +1,11 @@
 #include "dashboard_panel.h"
-#include "QDebug"
+#include <QDebug>
 #include <ros/package.h>
-#include "QFileDialog"
-#include "QDateTime"
+#include <geometry_msgs/Twist.h>
+#include <QFileDialog>
+#include <QDateTime>
+#include <QTimer>
+
 
 namespace radbot_dashboard
 {
@@ -10,6 +13,16 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   : rviz::Panel( parent )
 {
   ui_.setupUi(this);
+  tw_ = new ThumbWidget(ui_.verticalLayoutWidget);  //add thumbstick
+      tw_->setObjectName(QString::fromUtf8("graphicsView"));
+      QSizePolicy sizePolicy4(QSizePolicy::Fixed, QSizePolicy::Fixed);
+      sizePolicy4.setHorizontalStretch(0);
+      sizePolicy4.setVerticalStretch(0);
+      sizePolicy4.setHeightForWidth(tw_->sizePolicy().hasHeightForWidth());
+      tw_->setSizePolicy(sizePolicy4);
+      tw_->setMinimumSize(QSize(175, 175));
+      ui_.gridLayout_5->addWidget(tw_, 0, 1, 1, 1);
+
   setLayout(ui_.verticalLayout);
 
   //Process setup
@@ -26,8 +39,6 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   gmapping_process_->setProcessChannelMode(QProcess::ForwardedChannels);
   exploration_process_->setProcessChannelMode(QProcess::ForwardedChannels);
 
-  //action setup
-  //move_client_= new MoveBaseClient(std::string("move_base"),true);
 
   //Map Selection Setup
   map_dir_ = new QDir(QDir::home());
@@ -41,6 +52,13 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   map_dir_->setNameFilters(QStringList()<<"*.yaml");
   map_dir_->setFilter(QDir::Files);
   map_dir_->setSorting(QDir::Name);
+
+  //velocity publisher setup
+  linear_velocity_ = 0;
+  angular_velocity_ = 0;
+  QTimer* pub_timer = new QTimer( this );
+  thumb_pub_ = nh_.advertise<geometry_msgs::Twist>( "cmd_vel", 1 );
+
 
   //SIGNAL connections
   connect(ui_.amcl_start_button, SIGNAL(clicked()), this, SLOT(onAmclButton()));
@@ -57,8 +75,11 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(exploration_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(this, SIGNAL(mapsChanged()), this, SLOT(onMapsChanged()));
   connect(ui_.map_combo, SIGNAL(activated(int)), this, SLOT(onMapSelect(int)));
+  connect(tw_, SIGNAL( outputVelocity( float, float )), this, SLOT(thumbUpdate(float, float)));
+  connect(pub_timer, SIGNAL(timeout()), this, SLOT(thumbPublish()));
 
   emit mapsChanged();
+  pub_timer->start( 100 );
 }
 
 DashboardPanel::~DashboardPanel(){}
@@ -143,7 +164,7 @@ void DashboardPanel::onMapsChanged()
 }
 void DashboardPanel::onMapSelect(int index)
 {
-  QString arg =QString("map_file:=") + map_file_list_.at(index).absoluteFilePath();
+  QString arg =QString("map_file:=") + QString("\"") + map_file_list_.at(index).absoluteFilePath() + QString("\"");
   if(amcl_process_->args.isEmpty())
   {
     amcl_process_->args.append(arg);
@@ -160,6 +181,28 @@ void DashboardPanel::onMapSelect(int index)
   emit configChanged();
   //qDebug()<< amcl_process_->args;
 }
+
+void DashboardPanel::thumbUpdate(float linear, float angular)
+{
+  linear_velocity_ = linear;
+  angular_velocity_ = angular;
+}
+
+void DashboardPanel::thumbPublish()
+{
+  if( ros::ok() && thumb_pub_ )
+  {
+    geometry_msgs::Twist msg;
+    msg.linear.x = linear_velocity_;
+    msg.linear.y = 0;
+    msg.linear.z = 0;
+    msg.angular.x = 0;
+    msg.angular.y = 0;
+    msg.angular.z = angular_velocity_;
+    thumb_pub_.publish( msg );
+  }
+}
+
 
 /*
  * Process Helpers

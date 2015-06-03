@@ -8,6 +8,7 @@
 #endif
 
 #include <ui_dashboard_panel.h>
+#include "thumb_widget.h"
 #include <QProcess>
 #include <QDir>
 #include <QFileInfo>
@@ -54,19 +55,24 @@ protected Q_SLOTS:
   void onProcessExit(int exitCode, QProcess::ExitStatus exitStatus);
   void onMapsChanged();
   void onMapSelect(int index);
+  void thumbPublish();
+  void thumbUpdate(float linear, float angular);
 Q_SIGNALS:
   void mapsChanged();
 
 protected:
   Ui::Form ui_;
   ros::NodeHandle nh_;
-
   Process* amcl_process_;
   Process* gmapping_process_;
   Process* exploration_process_;
 
   QDir* map_dir_;
   QFileInfoList map_file_list_;
+
+  ros::Publisher thumb_pub_;
+  ThumbWidget* tw_;
+  float linear_velocity_, angular_velocity_;
 
 };
 }

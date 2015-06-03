@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   actionlib_msgs
   move_base_msgs
+  frontier_exploration
 )
 
 ## System dependencies are found with CMake's conventions
@@ -97,6 +98,7 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${CMAKE_CURRENT_BINARY_DIR}
+  include/${PROJECT_NAME}
 )
 link_directories(${catkin_LIBRARY_DIRS})
 
@@ -111,26 +113,28 @@ include(${QT_USE_FILE})
 ## Here we specify which header files need to be run through "moc",
 ## Qt's meta-object compiler.
 qt4_wrap_cpp(MOC_FILES
-  src/dashboard_panel.h
+  include/${PROJECT_NAME}/dashboard_panel.h
+  include/${PROJECT_NAME}/thumb_widget.h
 )
 
 ## Here we specify the list of source files, including the output of
 ## the previous command which is stored in ``${MOC_FILES}``.
 set(SOURCE_FILES
-  src/dashboard_panel.cpp 
+  src/dashboard_panel.cpp
+  src/thumb_widget.cpp
   ${MOC_FILES}
 )
 
-set(radbot_dashboard_UIS
+set(${PROJECT_NAME}_UIS
   src/dashboard_panel.ui
 )
 
-qt4_wrap_ui(radbot_dashboard_UIS_H ${radbot_dashboard_UIS})
+qt4_wrap_ui(${PROJECT_NAME}_UIS_H ${${PROJECT_NAME}_UIS})
 
 ## Declare a cpp library
  add_library(${PROJECT_NAME} 
    ${SOURCE_FILES}
-   ${radbot_dashboard_UIS_H}
+   ${${PROJECT_NAME}_UIS_H}
  )
 
 ## Declare a cpp executable
