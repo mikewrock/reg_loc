@@ -84,7 +84,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES radbot_dashboard
-  CATKIN_DEPENDS actionlib
+   CATKIN_DEPENDS actionlib frontier_exploration
 #  DEPENDS system_lib
 )
 
@@ -136,6 +136,8 @@ qt4_wrap_ui(${PROJECT_NAME}_UIS_H ${${PROJECT_NAME}_UIS})
    ${SOURCE_FILES}
    ${${PROJECT_NAME}_UIS_H}
  )
+
+add_dependencies(${PROJECT_NAME} frontier_exploration_generate_messages_cpp)
 
 ## Declare a cpp executable
 # add_executable(radbot_dashboard_node src/radbot_dashboard_node.cpp)
