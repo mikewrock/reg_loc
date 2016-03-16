@@ -73,6 +73,7 @@ protected:
   ros::Publisher thumb_pub_;
   ThumbWidget* tw_;
   float linear_velocity_, angular_velocity_;
+  int pub_counter_;
 
 };
 }

@@ -56,9 +56,10 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   //velocity publisher setup
   linear_velocity_ = 0;
   angular_velocity_ = 0;
+  pub_counter_ = 0;
   QTimer* pub_timer = new QTimer( this );
-  thumb_pub_ = nh_.advertise<geometry_msgs::Twist>( "cmd_vel", 1 );
-
+  thumb_pub_ = nh_.advertise<geometry_msgs::Twist>( "/cmd_vel/remote", 1 );
+  
 
   //SIGNAL connections
   connect(ui_.amcl_start_button, SIGNAL(clicked()), this, SLOT(onAmclButton()));
@@ -130,7 +131,7 @@ void DashboardPanel::onEstopButton()
 {
   //cancel move_base goals
   actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_client("move_base",true);
-  move_client.waitForServer(ros::Duration(5.0));
+  move_client.waitForServer(ros::Duration(2.0));
   if(move_client.isServerConnected())
   {
     move_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
@@ -139,7 +140,7 @@ void DashboardPanel::onEstopButton()
 
   //stop exploration
   actionlib::SimpleActionClient<frontier_exploration::ExploreTaskAction> explore_client("explore_server",true);
-  explore_client.waitForServer(ros::Duration(5.0));
+  explore_client.waitForServer(ros::Duration(2.0));
   if(explore_client.isServerConnected())
   {
     explore_client.cancelGoalsAtAndBeforeTime(ros::Time::now());
@@ -186,12 +187,14 @@ void DashboardPanel::thumbUpdate(float linear, float angular)
 {
   linear_velocity_ = linear;
   angular_velocity_ = angular;
+  pub_counter_ = 0;
 }
 
 void DashboardPanel::thumbPublish()
 {
-  if( ros::ok() && thumb_pub_ )
+  if( ros::ok() && thumb_pub_ && pub_counter_< 10 )
   {
+    pub_counter_++;
     geometry_msgs::Twist msg;
     msg.linear.x = linear_velocity_;
     msg.linear.y = 0;
