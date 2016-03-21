@@ -7,21 +7,23 @@
 #include <QTimer>
 
 
+
 namespace radbot_dashboard
 {
 DashboardPanel::DashboardPanel( QWidget* parent )
   : rviz::Panel( parent )
 {
   ui_.setupUi(this);
-  tw_ = new ThumbWidget(ui_.verticalLayoutWidget);  //add thumbstick
-      tw_->setObjectName(QString::fromUtf8("graphicsView"));
-      QSizePolicy sizePolicy4(QSizePolicy::Fixed, QSizePolicy::Fixed);
-      sizePolicy4.setHorizontalStretch(0);
-      sizePolicy4.setVerticalStretch(0);
-      sizePolicy4.setHeightForWidth(tw_->sizePolicy().hasHeightForWidth());
-      tw_->setSizePolicy(sizePolicy4);
-      tw_->setMinimumSize(QSize(175, 175));
-      ui_.gridLayout_5->addWidget(tw_, 0, 1, 1, 1);
+
+  //toggle setup
+  ui_.in_out_door_button->setLabels("out","in");
+  ui_.in_out_door_button->setColors(Qt::darkGreen,Qt::darkRed);
+  //not finished stuff
+  ui_.in_out_door_button->setDisabled(true);
+  ui_.heatmap_button->setDisabled(true);
+  ui_.measure_backgound_button->setDisabled(true);
+  ui_.heatmap_reset_button->setDisabled(true);
+  ui_.sample_reset_button->setDisabled(true);
 
   setLayout(ui_.verticalLayout);
 
@@ -53,13 +55,20 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   map_dir_->setFilter(QDir::Files);
   map_dir_->setSorting(QDir::Name);
 
+  //numSrcs setup
+  for(int i =1; i<=5; i++)
+      ui_.num_src_combo->addItem(QString::number(i));
+
   //velocity publisher setup
   linear_velocity_ = 0;
   angular_velocity_ = 0;
   pub_counter_ = 0;
   QTimer* pub_timer = new QTimer( this );
   thumb_pub_ = nh_.advertise<geometry_msgs::Twist>( "/cmd_vel/remote", 1 );
-  
+
+  //rad counts sub
+  count_sub_ = nh_.subscribe("counts", 1, &DashboardPanel::countsCB, this);
+  QTimer* spin_timer = new QTimer( this );
 
   //SIGNAL connections
   connect(ui_.amcl_start_button, SIGNAL(clicked()), this, SLOT(onAmclButton()));
@@ -68,6 +77,11 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(ui_.navigation_stop_button, SIGNAL(clicked()), this, SLOT(onStopNavButton()));
   connect(ui_.frontier_start_button, SIGNAL(clicked()), this, SLOT(onExplorationButton()));
   connect(ui_.stop_button, SIGNAL(clicked()), this, SLOT(onEstopButton()));
+  connect(ui_.in_out_door_button, SIGNAL(toggled(bool)), this, SLOT(onInoutButton(bool)));
+  connect(ui_.autosample_button, SIGNAL(toggled(bool)), this, SLOT(onAutosampleButton(bool)));
+  connect(ui_.sourceloc_run_button, SIGNAL(clicked()), this, SLOT(onPsoButton()));
+  connect(ui_.sample_button, SIGNAL(clicked()), this, SLOT(onSampleButton()));
+  connect(ui_.num_src_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(onNumSrcChange(int)));
   connect(amcl_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
   connect(amcl_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(gmapping_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
@@ -76,14 +90,59 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(exploration_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(this, SIGNAL(mapsChanged()), this, SLOT(onMapsChanged()));
   connect(ui_.map_combo, SIGNAL(activated(int)), this, SLOT(onMapSelect(int)));
-  connect(tw_, SIGNAL( outputVelocity( float, float )), this, SLOT(thumbUpdate(float, float)));
+  connect(ui_.tw, SIGNAL( outputVelocity( float, float )), this, SLOT(thumbUpdate(float, float)));
   connect(pub_timer, SIGNAL(timeout()), this, SLOT(thumbPublish()));
+  connect(pub_timer, SIGNAL(timeout()), this, SLOT(thumbPublish()));
+
 
   emit mapsChanged();
   pub_timer->start( 100 );
+  spin_timer->start( 1000 );
+
 }
 
 DashboardPanel::~DashboardPanel(){}
+
+//ros callbacks
+void DashboardPanel::countsCB(const ursa_driver::ursa_countsConstPtr counts){
+  ui_.cps_lcd->display((int)counts->counts);
+}
+void DashboardPanel::rosSpinner(){
+  ros::spinOnce();
+}
+
+//toggles
+void DashboardPanel::onInoutButton(bool in)
+{
+
+}
+
+void DashboardPanel::onAutosampleButton(bool in)
+{
+    radbot_control::Autosample req;
+    req.request.data = in;
+    ros::service::call("autosample", req);
+    //ros::service::waitForService("autosample");
+}
+
+void DashboardPanel::onPsoButton(){
+    std_srvs::Empty e;
+    ros::service::call("pso_trigger", e);
+    //ros::service::waitForService("pso_trigger");
+}
+
+void DashboardPanel::onSampleButton(){
+    std_srvs::Empty e;
+    ros::service::call("manual_sample", e);
+    //ros::service::waitForService("manual_sample");
+}
+
+void DashboardPanel::onNumSrcChange (int index) {
+    radbot_control::Numsrc req;
+    req.request.sources = index+1;
+    ros::service::call("num_sources", req);
+    //ros::service::waitForService("num_sources");
+}
 
 // Button Callbacks
 void DashboardPanel::onAmclButton()
@@ -194,7 +253,8 @@ void DashboardPanel::thumbPublish()
 {
   if( ros::ok() && thumb_pub_ && pub_counter_< 10 )
   {
-    pub_counter_++;
+    if(linear_velocity_ == 0 && angular_velocity_ == 0)
+      pub_counter_++;
     geometry_msgs::Twist msg;
     msg.linear.x = linear_velocity_;
     msg.linear.y = 0;

@@ -9,12 +9,17 @@
 
 #include <ui_dashboard_panel.h>
 #include "thumb_widget.h"
+#include "switchbutton.h"
 #include <QProcess>
 #include <QDir>
 #include <QFileInfo>
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <frontier_exploration/ExploreTaskAction.h>
+#include "radbot_control/Autosample.h"
+#include "radbot_control/Numsrc.h"
+#include "ursa_driver/ursa_counts.h"
+#include <std_srvs/Empty.h>
 
 namespace radbot_dashboard
 {
@@ -44,7 +49,15 @@ public:
   virtual void load( const rviz::Config& config );
   virtual void save( rviz::Config config ) const;
 
+protected:
+  void countsCB(const ursa_driver::ursa_countsConstPtr counts);
+  void rosSpinner();
 protected Q_SLOTS:
+  void onInoutButton(bool in);
+  void onAutosampleButton(bool in);
+  void onPsoButton();
+  void onSampleButton();
+  void onNumSrcChange (int index);
   void onAmclButton();
   void onSaveButton();
   void onGmappingButton();
@@ -71,7 +84,13 @@ protected:
   QFileInfoList map_file_list_;
 
   ros::Publisher thumb_pub_;
-  ThumbWidget* tw_;
+  ros::Subscriber count_sub_;
+
+  ros::ServiceClient auto_client;
+  ros::ServiceClient pso_client;
+  ros::ServiceClient manual_client;
+  ros::ServiceClient sources_client;
+
   float linear_velocity_, angular_velocity_;
   int pub_counter_;
 

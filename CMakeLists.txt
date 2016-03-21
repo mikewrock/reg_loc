@@ -10,6 +10,9 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs
   move_base_msgs
   frontier_exploration
+  radbot_control
+  std_srvs
+  ursa_driver
 )
 
 ## System dependencies are found with CMake's conventions
@@ -84,7 +87,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES radbot_dashboard
-   CATKIN_DEPENDS actionlib frontier_exploration
+   CATKIN_DEPENDS actionlib frontier_exploration radbot_control std_srvs ursa_driver
 #  DEPENDS system_lib
 )
 
@@ -115,6 +118,7 @@ include(${QT_USE_FILE})
 qt4_wrap_cpp(MOC_FILES
   include/${PROJECT_NAME}/dashboard_panel.h
   include/${PROJECT_NAME}/thumb_widget.h
+  include/${PROJECT_NAME}/switchbutton.h
 )
 
 ## Here we specify the list of source files, including the output of
@@ -122,6 +126,7 @@ qt4_wrap_cpp(MOC_FILES
 set(SOURCE_FILES
   src/dashboard_panel.cpp
   src/thumb_widget.cpp
+  src/switchbutton.cpp
   ${MOC_FILES}
 )
 
@@ -137,7 +142,8 @@ qt4_wrap_ui(${PROJECT_NAME}_UIS_H ${${PROJECT_NAME}_UIS})
    ${${PROJECT_NAME}_UIS_H}
  )
 
-add_dependencies(${PROJECT_NAME} frontier_exploration_generate_messages_cpp)
+#add_dependencies(${PROJECT_NAME} frontier_exploration_generate_messages_cpp)
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a cpp executable
 # add_executable(radbot_dashboard_node src/radbot_dashboard_node.cpp)
