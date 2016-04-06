@@ -70,9 +70,14 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   count_sub_ = nh_.subscribe("counts", 1, &DashboardPanel::countsCB, this);
   QTimer* spin_timer = new QTimer( this );
 
+  //status sub (battV)
+  status_sub_ = nh_.subscribe("status", 1, &DashboardPanel::statusCB, this);
+
+
   //SIGNAL connections
   connect(ui_.amcl_start_button, SIGNAL(clicked()), this, SLOT(onAmclButton()));
   connect(ui_.save_button, SIGNAL(clicked()), this, SLOT(onSaveButton()));
+  connect(ui_.shutdown_button, SIGNAL(clicked()), this, SLOT(onShutdownButton()));
   connect(ui_.gmap_start_button, SIGNAL(clicked()), this, SLOT(onGmappingButton()));
   connect(ui_.navigation_stop_button, SIGNAL(clicked()), this, SLOT(onStopNavButton()));
   connect(ui_.frontier_start_button, SIGNAL(clicked()), this, SLOT(onExplorationButton()));
@@ -92,7 +97,7 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(ui_.map_combo, SIGNAL(activated(int)), this, SLOT(onMapSelect(int)));
   connect(ui_.tw, SIGNAL( outputVelocity( float, float )), this, SLOT(thumbUpdate(float, float)));
   connect(pub_timer, SIGNAL(timeout()), this, SLOT(thumbPublish()));
-  connect(pub_timer, SIGNAL(timeout()), this, SLOT(thumbPublish()));
+  connect(spin_timer, SIGNAL(timeout()), this, SLOT(rosSpinner()));
 
 
   emit mapsChanged();
@@ -107,9 +112,15 @@ DashboardPanel::~DashboardPanel(){}
 void DashboardPanel::countsCB(const ursa_driver::ursa_countsConstPtr counts){
   ui_.cps_lcd->display((int)counts->counts);
 }
+void DashboardPanel::statusCB(const jackal_msgs::StatusConstPtr status){
+    ui_.progressBar->setValue((int)(status->measured_battery*10));
+}
+
 void DashboardPanel::rosSpinner(){
   ros::spinOnce();
 }
+
+
 
 //toggles
 void DashboardPanel::onInoutButton(bool in)
@@ -184,6 +195,19 @@ void DashboardPanel::onSaveButton()
   delete mapsaver;
 
   emit mapsChanged();
+}
+
+void DashboardPanel::onShutdownButton()
+{
+    QProcess* shutd = new QProcess;
+    QProcess* passwd = new QProcess;
+    passwd->setStandardOutputProcess(shutd);
+    shutd->setProcessChannelMode(QProcess::ForwardedChannels);
+    shutd->start("ssh administrator@192.168.5.201 -tt \"echo clearpath | sudo -S shutdown -h now\"");
+    //passwd->start("echo clearpath");
+    shutd->waitForFinished(60000);
+    delete shutd;
+    //delete passwd;
 }
 
 void DashboardPanel::onEstopButton()

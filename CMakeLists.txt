@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   radbot_control
   std_srvs
   ursa_driver
+  jackal_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -87,7 +88,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES radbot_dashboard
-   CATKIN_DEPENDS actionlib frontier_exploration radbot_control std_srvs ursa_driver
+   CATKIN_DEPENDS actionlib frontier_exploration radbot_control std_srvs ursa_driver jackal_msgs
 #  DEPENDS system_lib
 )
 

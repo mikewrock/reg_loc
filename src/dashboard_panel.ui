@@ -94,14 +94,26 @@
             <height>0</height>
            </size>
           </property>
+          <property name="toolTip">
+           <string extracomment="Battery Voltage"/>
+          </property>
+          <property name="minimum">
+           <number>215</number>
+          </property>
+          <property name="maximum">
+           <number>294</number>
+          </property>
           <property name="value">
-           <number>24</number>
+           <number>250</number>
+          </property>
+          <property name="textVisible">
+           <bool>true</bool>
           </property>
           <property name="invertedAppearance">
            <bool>false</bool>
           </property>
           <property name="format">
-           <string>%p%</string>
+           <string>Battery: %p%</string>
           </property>
          </widget>
         </item>

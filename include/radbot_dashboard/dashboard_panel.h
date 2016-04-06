@@ -19,6 +19,7 @@
 #include "radbot_control/Autosample.h"
 #include "radbot_control/Numsrc.h"
 #include "ursa_driver/ursa_counts.h"
+#include <jackal_msgs/Status.h>
 #include <std_srvs/Empty.h>
 
 namespace radbot_dashboard
@@ -51,8 +52,9 @@ public:
 
 protected:
   void countsCB(const ursa_driver::ursa_countsConstPtr counts);
-  void rosSpinner();
+  void statusCB(const jackal_msgs::StatusConstPtr status);
 protected Q_SLOTS:
+  void rosSpinner();
   void onInoutButton(bool in);
   void onAutosampleButton(bool in);
   void onPsoButton();
@@ -60,6 +62,7 @@ protected Q_SLOTS:
   void onNumSrcChange (int index);
   void onAmclButton();
   void onSaveButton();
+  void onShutdownButton();
   void onGmappingButton();
   void onStopNavButton();
   void onExplorationButton();
@@ -85,6 +88,7 @@ protected:
 
   ros::Publisher thumb_pub_;
   ros::Subscriber count_sub_;
+  ros::Subscriber status_sub_;
 
   ros::ServiceClient auto_client;
   ros::ServiceClient pso_client;
