@@ -19,7 +19,6 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   ui_.in_out_door_button->setLabels("out","in");
   ui_.in_out_door_button->setColors(Qt::darkGreen,Qt::darkRed);
   //not finished stuff
-  ui_.in_out_door_button->setDisabled(true);
   ui_.heatmap_button->setDisabled(true);
   ui_.measure_backgound_button->setDisabled(true);
   ui_.heatmap_reset_button->setDisabled(true);
@@ -87,6 +86,7 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(ui_.sourceloc_run_button, SIGNAL(clicked()), this, SLOT(onPsoButton()));
   connect(ui_.sample_button, SIGNAL(clicked()), this, SLOT(onSampleButton()));
   connect(ui_.num_src_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(onNumSrcChange(int)));
+  connect(ui_.in_out_door_button, SIGNAL(toggled(bool)), this, SLOT(onInoutButton(bool)));
   connect(amcl_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
   connect(amcl_process_, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(onProcessExit(int,QProcess::ExitStatus)));
   connect(gmapping_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
@@ -125,7 +125,19 @@ void DashboardPanel::rosSpinner(){
 //toggles
 void DashboardPanel::onInoutButton(bool in)
 {
-
+    onStopNavButton();
+    if(in)
+    {
+        amcl_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/amcl_outdoor.launch");
+        gmapping_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping_outdoor.launch");
+        exploration_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/frontier_exploration_outdoor.launch");
+    }
+    else
+    {
+        amcl_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/amcl.launch");
+        gmapping_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping.launch");
+        exploration_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/frontier_exploration.launch");
+    }
 }
 
 void DashboardPanel::onAutosampleButton(bool in)
