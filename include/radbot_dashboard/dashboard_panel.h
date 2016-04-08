@@ -59,6 +59,7 @@ protected Q_SLOTS:
   void onAutosampleButton(bool in);
   void onPsoButton();
   void onSampleButton();
+  void onSampleResetButton();
   void onNumSrcChange (int index);
   void onAmclButton();
   void onSaveButton();

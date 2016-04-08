@@ -22,8 +22,6 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   ui_.heatmap_button->setDisabled(true);
   ui_.measure_backgound_button->setDisabled(true);
   ui_.heatmap_reset_button->setDisabled(true);
-  ui_.sample_reset_button->setDisabled(true);
-
   setLayout(ui_.verticalLayout);
 
   //Process setup
@@ -85,6 +83,7 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(ui_.autosample_button, SIGNAL(toggled(bool)), this, SLOT(onAutosampleButton(bool)));
   connect(ui_.sourceloc_run_button, SIGNAL(clicked()), this, SLOT(onPsoButton()));
   connect(ui_.sample_button, SIGNAL(clicked()), this, SLOT(onSampleButton()));
+  connect(ui_.sample_reset_button, SIGNAL(clicked()), this, SLOT(onSampleResetButton()));
   connect(ui_.num_src_combo, SIGNAL(currentIndexChanged(int)), this, SLOT(onNumSrcChange(int)));
   connect(ui_.in_out_door_button, SIGNAL(toggled(bool)), this, SLOT(onInoutButton(bool)));
   connect(amcl_process_, SIGNAL(error(QProcess::ProcessError)), this, SLOT(onProcessError(QProcess::ProcessError)));
@@ -157,6 +156,12 @@ void DashboardPanel::onPsoButton(){
 void DashboardPanel::onSampleButton(){
     std_srvs::Empty e;
     ros::service::call("manual_sample", e);
+    //ros::service::waitForService("manual_sample");
+}
+
+void DashboardPanel::onSampleResetButton(){
+    std_srvs::Empty e;
+    ros::service::call("clear_samples", e);
     //ros::service::waitForService("manual_sample");
 }
 
