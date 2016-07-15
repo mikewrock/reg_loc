@@ -371,7 +371,7 @@
     <item>
      <layout class="QGridLayout" name="gridLayout">
       <item row="4" column="0">
-       <widget class="QPushButton" name="heatmap_reset_button">
+       <widget class="QPushButton" name="generic_button">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
           <horstretch>1</horstretch>
@@ -391,8 +391,8 @@
          </size>
         </property>
         <property name="text">
-         <string>Reset Intensity
-map</string>
+         <string>Blank
+</string>
         </property>
         <property name="autoDefault">
          <bool>false</bool>
@@ -558,7 +558,16 @@ Background</string>
         <property name="text">
          <string/>
         </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
         <property name="autoDefault">
+         <bool>false</bool>
+        </property>
+        <property name="default">
          <bool>false</bool>
         </property>
         <property name="flat">

@@ -19,9 +19,8 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   ui_.in_out_door_button->setLabels("out","in");
   ui_.in_out_door_button->setColors(Qt::darkGreen,Qt::darkRed);
   //not finished stuff
-  ui_.heatmap_button->setDisabled(true);
   ui_.measure_backgound_button->setDisabled(true);
-  ui_.heatmap_reset_button->setDisabled(true);
+  ui_.generic_button->setDisabled(true);
   setLayout(ui_.verticalLayout);
 
   //Process setup
@@ -81,6 +80,7 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   connect(ui_.stop_button, SIGNAL(clicked()), this, SLOT(onEstopButton()));
   connect(ui_.in_out_door_button, SIGNAL(toggled(bool)), this, SLOT(onInoutButton(bool)));
   connect(ui_.autosample_button, SIGNAL(toggled(bool)), this, SLOT(onAutosampleButton(bool)));
+  connect(ui_.heatmap_button, SIGNAL(toggled(bool)), this, SLOT(onHeatmapButton(bool)));
   connect(ui_.sourceloc_run_button, SIGNAL(clicked()), this, SLOT(onPsoButton()));
   connect(ui_.sample_button, SIGNAL(clicked()), this, SLOT(onSampleButton()));
   connect(ui_.sample_reset_button, SIGNAL(clicked()), this, SLOT(onSampleResetButton()));
@@ -137,6 +137,14 @@ void DashboardPanel::onInoutButton(bool in)
         gmapping_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping.launch");
         exploration_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/frontier_exploration.launch");
     }
+}
+
+void DashboardPanel::onHeatmapButton(bool in)
+{
+    std_srvs::SetBool b;
+    b.request.data = in;
+    ros::service::call("/radbot_control_node/rad_costmap/RadLayer/heatmap_enable", b);
+    //ros::service::waitForService("heatmap_enable");
 }
 
 void DashboardPanel::onAutosampleButton(bool in)

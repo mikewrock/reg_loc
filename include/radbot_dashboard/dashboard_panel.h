@@ -21,6 +21,7 @@
 #include "ursa_driver/ursa_counts.h"
 #include <jackal_msgs/Status.h>
 #include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
 
 namespace radbot_dashboard
 {
@@ -56,6 +57,7 @@ protected:
 protected Q_SLOTS:
   void rosSpinner();
   void onInoutButton(bool in);
+  void onHeatmapButton(bool in);
   void onAutosampleButton(bool in);
   void onPsoButton();
   void onSampleButton();
