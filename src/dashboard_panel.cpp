@@ -63,7 +63,7 @@ DashboardPanel::DashboardPanel( QWidget* parent )
   thumb_pub_ = nh_.advertise<geometry_msgs::Twist>( "/cmd_vel/remote", 1 );
 
   //rad counts sub
-  count_sub_ = nh_.subscribe("counts", 1, &DashboardPanel::countsCB, this);
+  count_sub_ = nh_.subscribe("/ursa_node/counts", 1, &DashboardPanel::countsCB, this);
   QTimer* spin_timer = new QTimer( this );
 
   //status sub (battV)
@@ -170,6 +170,7 @@ void DashboardPanel::onSampleButton(){
 void DashboardPanel::onSampleResetButton(){
     std_srvs::Empty e;
     ros::service::call("clear_samples", e);
+    ros::service::call("reset_sample_markers", e);
     //ros::service::waitForService("manual_sample");
 }
 
