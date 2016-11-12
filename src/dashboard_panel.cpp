@@ -129,7 +129,7 @@ void DashboardPanel::onInoutButton(bool in)
     {
         amcl_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/amcl_outdoor.launch");
         gmapping_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/gmapping_outdoor.launch");
-        exploration_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/frontier_exploration_outdoor.launch");
+        exploration_process_->path = QString::fromStdString(ros::package::getPath("radbotlive")+"/launch/radbot_exploration_outdoor.launch");
     }
     else
     {
