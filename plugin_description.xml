@@ -1,9 +1,19 @@
-<library path="lib/libradbot_dashboard">
-  <class name="radbot_dashboard/Radbot Dashboard"
-         type="radbot_dashboard::DashboardPanel"
+<library path="lib/libregistration_localization">
+  <class name="registration_localization/RL Dashboard"
+         type="registration_localization::DashboardPanel"
          base_class_type="rviz::Panel">
     <description>
       A panel containing controls for Radbot.
+    </description>
+  </class>
+  <class name="point_selector/MarkerSelector"
+         type="point_selector::markerPointsPublisher"
+         base_class_type="rviz::Tool">
+    <description>
+      Fork of the rviz::SelectionTool:
+      Drag with the left button to select objects in the 3D scene.
+      Hold the Alt key to change viewpoint as in the Move tool.
+      Additionally publishes selected points on /selected_points topic.
     </description>
   </class>
 </library>

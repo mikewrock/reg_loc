@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>radbot_dashboard</name>
+  <name>registration_localization</name>
   <version>0.0.0</version>
-  <description>The radbot_dashboard package</description>
+  <description>The registration_localization package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -42,23 +42,14 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>rviz</build_depend>
   <run_depend>rviz</run_depend>
-  <build_depend>move_base_msgs</build_depend>
-  <run_depend>move_base_msgs</run_depend>
-  <build_depend>actionlib_msgs</build_depend>
-  <run_depend>actionlib_msgs</run_depend>
-  <build_depend>actionlib</build_depend>
-  <run_depend>actionlib</run_depend>
-  <build_depend>frontier_exploration</build_depend>
-  <run_depend>frontier_exploration</run_depend>
-  <build_depend>radbot_control</build_depend>
-  <run_depend>radbot_control</run_depend>
   <build_depend>std_srvs</build_depend>
-  <run_depend>std_srvs</run_depend>
-  <build_depend>ursa_driver</build_depend>
-  <run_depend>ursa_driver</run_depend>
-  <build_depend>jackal_msgs</build_depend>
-  <run_depend>jackal_msgs</run_depend>
-
+  <run_depend>std_srvs</run_depend>  
+  <build_depend>qt_build</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>libqt4-dev</build_depend>
+  <run_depend>qt_build</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>libqt4-dev</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

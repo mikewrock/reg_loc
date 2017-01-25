@@ -1,20 +1,15 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(radbot_dashboard)
+project(registration_localization)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rviz
-  actionlib
-  actionlib_msgs
-  move_base_msgs
-  frontier_exploration
-  radbot_control
   std_srvs
-  ursa_driver
-  jackal_msgs
+  qt_build
 )
+find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -88,7 +83,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES radbot_dashboard
-   CATKIN_DEPENDS actionlib frontier_exploration radbot_control std_srvs ursa_driver jackal_msgs
+   CATKIN_DEPENDS std_srvs
 #  DEPENDS system_lib
 )
 
@@ -104,6 +99,7 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
   include/${PROJECT_NAME}
 )
+include_directories(include ${catkin_INCLUDE_DIRS}  ${PCL_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
 ## This plugin includes Qt widgets, so we must include Qt like so:
@@ -118,16 +114,18 @@ include(${QT_USE_FILE})
 ## Qt's meta-object compiler.
 qt4_wrap_cpp(MOC_FILES
   include/${PROJECT_NAME}/dashboard_panel.h
-  include/${PROJECT_NAME}/thumb_widget.h
-  include/${PROJECT_NAME}/switchbutton.h
+  include/${PROJECT_NAME}/point_selector.h
+  include/${PROJECT_NAME}/save_marker.hpp
+  include/${PROJECT_NAME}/alignment_node.hpp
 )
 
 ## Here we specify the list of source files, including the output of
 ## the previous command which is stored in ``${MOC_FILES}``.
 set(SOURCE_FILES
   src/dashboard_panel.cpp
-  src/thumb_widget.cpp
-  src/switchbutton.cpp
+  src/point_selector.cpp
+  src/save_marker.cpp
+  src/alignment_node.cpp
   ${MOC_FILES}
 )
 
@@ -155,7 +153,7 @@ add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(${PROJECT_NAME}
-   ${QT_LIBRARIES} ${catkin_LIBRARIES}
+   ${QT_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES}
  )
 
 #############

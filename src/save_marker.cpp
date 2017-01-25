@@ -1,0 +1,115 @@
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "../include/registration_localization/save_marker.hpp"
+
+#include <sstream>
+#include <ros/network.h>
+#include <string>
+#include <stdlib.h> 
+
+// PCL specific includes
+#include <sensor_msgs/PointCloud2.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
+#include <string>
+#include <tf/transform_broadcaster.h>
+#include <pcl/conversions.h>
+#include "pcl_ros/transforms.h"
+#include <iostream>
+#include <pcl/filters/passthrough.h>
+#include <pcl/io/pcd_io.h>
+#include "std_msgs/String.h"
+#include <sstream>
+#include <pcl/filters/extract_indices.h>
+
+namespace registration_localization {
+namespace marker {
+/*****************************************************************************
+** Implementation
+*****************************************************************************/
+QNode::QNode() 
+	{}
+
+
+QNode::~QNode() {
+    if(ros::isStarted()) {
+      ros::shutdown(); // explicitly needed since we use ros::start();
+      ros::waitForShutdown();
+    }
+	wait();
+}
+
+
+bool QNode::init(std::string name, std::string location) {
+
+int fargc = 0;
+char** fargv = (char**)malloc(sizeof(char*)*(fargc+1));
+	ros::init(fargc,fargv,"theNodeName");
+free(fargv);
+	if ( ! ros::master::check() ) {
+		return false;
+
+	}
+
+	ros::start(); // explicitly needed since our nodehandle is going out of scope.
+
+	ros::NodeHandle n;
+	// Add your ros communications here.
+
+	// Create a ROS subscriber for the input point cloud
+	marker_sub = n.subscribe ("selected_marker_points", 1, &QNode::cloud_cb, this);
+	std::stringstream ss;
+	ss << location << name << ".pcd";
+	filename.data = ss.str();
+ROS_INFO("Setting Filename as %s", filename.data.c_str());
+
+	start();
+	return true;
+}
+
+void QNode::run() {
+	while ( ros::ok() ) {
+		ros::spinOnce();
+	}
+	std::cout << "Ros shutdown, proceeding to close the gui." << std::endl;
+	Q_EMIT rosShutdown(); // used to signal the gui for a shutdown (useful to roslaunch)
+}
+
+void QNode::cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
+{
+  
+ROS_INFO("GOT A CLOUD!");
+sensor_msgs::PointCloud2 cloud_msg2 = *cloud_msg;
+
+ROS_INFO("created params");
+//fix the naming discrepancy between ROS and PCL (from "intensities" to "intensity")
+cloud_msg2.fields[3].name = "intensity";
+ROS_INFO("created params");
+//Create a PCL pointcloud
+pcl::PointCloud<pcl::PointXYZI>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZI>);
+//Populate the PCL pointcloud with the ROS message
+pcl::fromROSMsg(cloud_msg2,*cloud);
+//Create containers for filtered clouds
+pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZI>);
+ROS_INFO("set params");
+// Create the filtering object
+  pcl::PassThrough<pcl::PointXYZI> pass (true);
+//filter the data
+  pass.setInputCloud (cloud);
+  pass.setFilterFieldName ("intensity");
+  pass.setFilterLimits (1000,5000);
+  pass.filter (*cloud_filtered);
+ROS_INFO("done filtering");
+ 
+  // Convert to ROS data type
+  sensor_msgs::PointCloud2 output;
+  pcl::toROSMsg(*cloud_filtered, output);
+  pcl::io::savePCDFileASCII (filename.data.c_str(), *cloud_filtered);
+ROS_INFO("Saved to %s", filename.data.c_str());
+}
+}
+
+}

@@ -1,0 +1,61 @@
+/**
+ * @file /include/test_panel/qnode.hpp
+ *
+ * @brief Communications central!
+ *
+ * @date February 2011
+ **/
+/*****************************************************************************
+** Ifdefs
+*****************************************************************************/
+
+#ifndef registration_localization_QNODE_HPP_
+#define registration_localization_QNODE_HPP_
+
+/*****************************************************************************
+** Includes
+*****************************************************************************/
+
+#include <ros/ros.h>
+#include <string>
+#include <QThread>
+#include <QStringListModel>
+#include <sensor_msgs/PointCloud2.h>
+
+#include "std_msgs/String.h"
+#include <sstream>
+/*****************************************************************************
+** Namespaces
+*****************************************************************************/
+
+namespace registration_localization {
+namespace marker {
+
+/*****************************************************************************
+** Class
+*****************************************************************************/
+
+class QNode : public QThread {
+    Q_OBJECT
+public:
+	QNode();
+	virtual ~QNode();
+	bool init(std::string name, std::string location);
+	void run();
+	void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
+	std_msgs::String filename;
+
+
+Q_SIGNALS:
+    void rosShutdown();
+
+private:
+	int init_argc;
+	char** init_argv;
+	ros::Subscriber marker_sub;
+};
+}
+
+}  // namespace 
+
+#endif /* test_panel_QNODE_HPP_ */
