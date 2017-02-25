@@ -100,7 +100,7 @@ ROS_INFO("set params");
 //filter the data
   pass.setInputCloud (cloud);
   pass.setFilterFieldName ("intensity");
-  pass.setFilterLimits (1150,5000);
+  pass.setFilterLimits (800,5000);
   pass.filter (*cloud_filtered);
 ROS_INFO("done filtering");
  

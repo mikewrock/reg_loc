@@ -148,6 +148,7 @@ selected_points_ros.fields[4].name = "index";
     selected_points_ros.fields[4].offset = 16;
     selected_points_ros.fields[4].datatype = sensor_msgs::PointField::FLOAT32;
     selected_points_ros.fields[4].count = 1;
+ROS_INFO("looping");
     for( int i = 0; i < num_points; i++ )
     {
         QModelIndex child_index = model->index( i, 0 );
@@ -160,18 +161,22 @@ selected_points_ros.fields[4].name = "index";
 	float vec3 = subchild3->getFloat();
 int chil = child->numChildren();
         uint8_t* ptr = &selected_points_ros.data[0] + i * selected_points_ros.point_step;
+ROS_INFO("looped");
         *(float*)ptr = vec.x;
         ptr += 4;
         *(float*)ptr = vec.y;
         ptr += 4;
         *(float*)ptr = vec.z;
+ROS_INFO("looped");
         ptr += 4;
         *(float*)ptr = vec2;
         ptr += 4;
         *(float*)ptr = vec3;
         ptr += 4;
+ROS_INFO("looped");
     }
 
+ROS_INFO("looped");
     selected_points_ros.header.stamp = ros::Time::now();
     rviz_selected_pub_.publish( selected_points_ros );
 

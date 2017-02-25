@@ -52,15 +52,6 @@ namespace align{
 
 
 
-QNode::~QNode() {
-    if(ros::isStarted()) {
-      ros::shutdown(); // explicitly needed since we use ros::start();
-      ros::waitForShutdown();
-    }
-	wait();
-}
-
-
 bool QNode::init(std::string topic, std::string name, std::string location) {
 
 	int fargc = 0;

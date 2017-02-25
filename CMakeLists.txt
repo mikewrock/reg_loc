@@ -8,8 +8,10 @@ find_package(catkin REQUIRED COMPONENTS
   rviz
   std_srvs
   qt_build
+  pcl_conversions 
+  pcl_ros 
 )
-find_package(PCL REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -135,6 +137,13 @@ set(${PROJECT_NAME}_UIS
 
 qt4_wrap_ui(${PROJECT_NAME}_UIS_H ${${PROJECT_NAME}_UIS})
 
+
+add_executable(saveapcd src/savepcd.cpp)
+add_executable(testing src/testing2.cpp)
+add_executable(algorithm src/algorithm.cpp)
+add_executable(matching_test src/matching.cpp)
+add_executable(keypoints src/show_keypoints.cpp)
+
 ## Declare a cpp library
  add_library(${PROJECT_NAME} 
    ${SOURCE_FILES}
@@ -155,6 +164,12 @@ add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
  target_link_libraries(${PROJECT_NAME}
    ${QT_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES}
  )
+
+target_link_libraries(saveapcd  ${catkin_LIBRARIES})
+target_link_libraries(algorithm  ${catkin_LIBRARIES})
+target_link_libraries(matching_test  ${catkin_LIBRARIES})
+target_link_libraries(testing  ${catkin_LIBRARIES} libvtkCommon.so libvtkFiltering.so)
+target_link_libraries(keypoints  ${catkin_LIBRARIES} libvtkCommon.so libvtkFiltering.so )
 
 #############
 ## Install ##

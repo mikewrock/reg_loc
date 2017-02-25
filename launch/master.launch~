@@ -1,0 +1,29 @@
+<launch>
+  <!--Standalone launch file to visualize the URDF Model of a Clearpath Husky A200-->
+<param name="robot_description" command="$(find xacro)/xacro.py '/home/mike/catkin_ws/src/registration_localization/husky.urdf.xacro'"/>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+
+
+<!--- Laser Scanner -->
+  <arg name="host" default="192.168.0.2" />
+  <node pkg="lms1xx" name="lms1xx" type="LMS1xx_node">
+    <param name="host" value="$(arg host)" />
+  </node>
+
+  <!--- Run local laser assembler -->
+  <node type="laser_scan_assembler" pkg="laser_assembler" name="my_assembler">
+    <param name="max_scans" type="int" value="10000" />
+    <param name="fixed_frame" type="string" value="base_link" />
+    <param name="tf_cache_time_secs" type="double" value="30.0" />
+  </node>
+
+  <!--- Run rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" required="True" > 
+  </node>
+
+  <!--- Run Powercube node-->
+  <node name="cube_node" pkg="wrock" type="cube_node" output="screen" />
+  
+
+
+</launch>

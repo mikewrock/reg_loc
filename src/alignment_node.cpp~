@@ -159,7 +159,7 @@ void QNode::align() {
 	//filter the data
 	  pass.setInputCloud (cloud);
 	  pass.setFilterFieldName ("intensity");
-	  pass.setFilterLimits (800,5000);
+	  pass.setFilterLimits (1000,5000);
 	  pass.filter (*cloud_filtered);
 		//Align the two clouds
 	
