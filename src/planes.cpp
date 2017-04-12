@@ -49,6 +49,16 @@
 #include <pcl/features/narf_descriptor.h>
 #include <pcl/registration/correspondence_rejection_distance.h>
 #include <pcl/registration/transformation_estimation_lm.h>
+#include <iostream>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/extract_indices.h>
+
 #define DEBUG 0
 
 #define L12 0.30
@@ -77,6 +87,24 @@ public:
 float dot_product(Eigen::Vector3f first,Eigen::Vector3f second){
 
 	return first(0)*second(0) + first(1)*second(1) + first(2)*second(2);
+
+
+}
+bool check_planes(Eigen::Vector4f first,Eigen::Vector4f second,Eigen::Vector4f third){
+	Eigen::Vector3f normal1, normal2, normal3;
+	normal1(0) = first(0);
+	normal1(1) = first(1);
+	normal1(2) = first(2);
+	normal2(0) = second(0);
+	normal2(1) = second(1);
+	normal2(2) = second(2);
+	normal3(0) = third(0);
+	normal3(1) = third(1);
+	normal3(2) = third(2);
+	ROS_INFO("Plane check %f - %f - %f",dot_product(normal1,normal2),dot_product(normal1,normal3),dot_product(normal3,normal2));
+	if(fabs(dot_product(normal1,normal2))<0.01 && fabs(dot_product(normal1,normal3))<0.01 && fabs(dot_product(normal3,normal2)<0.01))	return true;
+	else return false;
+	
 
 
 }
@@ -109,7 +137,32 @@ Eigen::Vector3f cross_product(Eigen::Vector3f first,Eigen::Vector3f second){
 
 }
 
+Eigen::Vector3f cross_product(Eigen::Vector4f first,Eigen::Vector4f second){
+
+	Eigen::Vector3f ret;
+	ret(0) = first(1)*second(2)-first(2)*second(1);
+	ret(1) = first(2)*second(0)-first(0)*second(2);
+	ret(2) = first(0)*second(1)-first(1)*second(0);
+	return ret;
+
+
+}
+
 Eigen::Vector3f normalized_cross_product(Eigen::Vector3f first,Eigen::Vector3f second){
+
+	Eigen::Vector3f ret;
+	ret(0) = first(1)*second(2)-first(2)*second(1);
+	ret(1) = first(2)*second(0)-first(0)*second(2);
+	ret(2) = first(0)*second(1)-first(1)*second(0);
+	float m = sqrt(pow(ret(0),2)+pow(ret(1),2)+pow(ret(2),2));
+	ret(0) = ret(0)/m;
+	ret(1) = ret(1)/m;
+	ret(2) = ret(2)/m;
+	return ret;
+
+
+}
+Eigen::Vector3f normalized_cross_product(Eigen::Vector4f first,Eigen::Vector4f second){
 
 	Eigen::Vector3f ret;
 	ret(0) = first(1)*second(2)-first(2)*second(1);
@@ -126,210 +179,129 @@ Eigen::Vector3f normalized_cross_product(Eigen::Vector3f first,Eigen::Vector3f s
 
 Eigen::Matrix4f locate_marker(const pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_src, Eigen::Matrix3f &marker_location){
 	
-	std::vector<int> P1;
-	std::vector<int> P2;
-	std::vector<int> P3;
-	float P1x = 0;
-	float P1y = 0;
-	float P1z = 0;
-	float P2x = 0;
-	float P2y = 0;
-	float P2z = 0;
-	float P3x = 0;
-	float P3y = 0;
-	float P3z = 0;
-	float angle;
-	int cnt;
+
 	Eigen::Matrix4f transform_mat;
-	// Filter for intensity
-	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZI> );
-	pcl::PassThrough<pcl::PointXYZI> pass;
-	pass.setInputCloud (cloud_src);
-	pass.setFilterFieldName ("intensity");
-	pass.setFilterLimits (1050, 1500);
-	pass.filter (*cloud_filtered);
 
-	if(cloud_filtered->points.size() < 3){
 
-		ROS_INFO("Not enough points in data");
-		return transform_mat;
+  std::cerr << "PointCloud before filtering: " << cloud_src->width * cloud_src->height << " data points." << std::endl;
 
-	}
-	ROS_INFO("Calculating %d Points",cloud_filtered->points.size());
+pcl::PCLPointCloud2::Ptr cloud_blob (new pcl::PCLPointCloud2), cloud_filtered_blob (new pcl::PCLPointCloud2);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZI>), cloud_p (new pcl::PointCloud<pcl::PointXYZI>), cloud_f (new pcl::PointCloud<pcl::PointXYZI>);
 
-	//for (size_t q = 0; q < cloud_filtered->points.size (); ++q) ROS_INFO("Point %d: %f - %f - %f",q,cloud_filtered->points[q].x,cloud_filtered->points[q].y,cloud_filtered->points[q].z);
-	// Outlier Removal
-float LAcc = LACC;
-while(LAcc < 0.1){
-	for (size_t i = 0; i < cloud_filtered->points.size (); ++i){
-		for (size_t j = i+1; j < cloud_filtered->points.size (); ++j){	
-			float distance = sqrt(pow(cloud_filtered->points[j].x - cloud_filtered->points[i].x,2) + 
-						pow(cloud_filtered->points[j].y - cloud_filtered->points[i].y,2) + 
-						  pow(cloud_filtered->points[j].z - cloud_filtered->points[i].z,2)); 	
-			for (size_t k = j+1; k < cloud_filtered->points.size (); ++k){	
-				float distance2 = sqrt(pow(cloud_filtered->points[k].x - cloud_filtered->points[i].x,2) + 
-					pow(cloud_filtered->points[k].y - cloud_filtered->points[i].y,2) + 
-					pow(cloud_filtered->points[k].z - cloud_filtered->points[i].z,2));				
-				if(fabs(distance - L12) < LAcc && fabs(distance2 - L13) < LAcc){
-					P1.push_back(i);
-					P2.push_back(j);
-					P3.push_back(k);
-		
-				//ROS_INFO("at j = %d k = %d D1: %f D2: %f",j,k,distance -L1,distance2-L2);	
-					}
-				if(fabs(distance - L13) < LAcc && fabs(distance2 - L12) < LAcc){
-					P1.push_back(i);
-					P2.push_back(k);
-					P3.push_back(j);
+pcl::toPCLPointCloud2 ( *cloud_src,*cloud_blob);
+  // Create the filtering object: downsample the dataset using a leaf size of 1cm
+  pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
+  sor.setInputCloud (cloud_blob);
+  sor.setLeafSize (0.01f, 0.01f, 0.01f);
+  sor.filter (*cloud_filtered_blob);
 
-				//ROS_INFO("at j = %d k = %d D1: %f D2: %f",j,k,distance-L2,distance2-L1);
-					}
-				if(fabs(distance - L12) < LAcc && fabs(distance2 - L23) < LAcc){
-					P1.push_back(j);
-					P2.push_back(i);
-					P3.push_back(k);
+  // Convert to the templated PointCloud
+  pcl::fromPCLPointCloud2 (*cloud_filtered_blob, *cloud_filtered);
 
-				//ROS_INFO("at i = %d k = %d D1: %f D2: %f",i,k,distance-L1,distance2-L3);
-					}
-				if(fabs(distance - L23) < LAcc && fabs(distance2 - L12) < LAcc){
-					P1.push_back(k);
-					P2.push_back(i);
-					P3.push_back(j);
-				//ROS_INFO("at i = %d j = %d D1: %f D2: %f",i,j,distance-L3,distance2-L1);
-					}
-				if(fabs(distance - L13) < LAcc && fabs(distance2 - L23) < LAcc){
-					P1.push_back(j);
-					P2.push_back(k);
-					P3.push_back(i);
-				//ROS_INFO("at i = %d k = %d D1: %f D2: %f",i,k,distance-L2,distance2-L3);
-					}
-				if(fabs(distance - L23) < LAcc && fabs(distance2 - L13) < LAcc){
-					P1.push_back(k);
-					P2.push_back(j);
-					P3.push_back(i);
-				//ROS_INFO("at i = %d j = %d D1: %f D2: %f",i,j,distance-L3,distance2-L2);
-					}
-				}
-			}
-		}
-	if(P1.size() < 1 || P2.size() < 1 || P2.size() < 1) LAcc += 0.001;
-	else break;
+  std::cerr << "PointCloud after filtering: " << cloud_filtered->width * cloud_filtered->height << " data points." << std::endl;
+
+  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
+  pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
+  // Create the segmentation object
+  pcl::SACSegmentation<pcl::PointXYZI> seg;
+  // Optional
+  seg.setOptimizeCoefficients (true);
+  // Mandatory
+  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setMaxIterations (1000);
+  seg.setDistanceThreshold (0.01);
+
+  // Create the filtering object
+  pcl::ExtractIndices<pcl::PointXYZI> extract;
+
+  int i = 0, nr_points = (int) cloud_filtered->points.size ();
+ 
+std::vector<Eigen::Vector4f> planes;
+Eigen::Vector4f plane;
+ // While 30% of the original cloud is still there
+
+  while (cloud_filtered->points.size () > 0.5 * nr_points)
+  {
+    // Segment the largest planar component from the remaining cloud
+    seg.setInputCloud (cloud_filtered);
+    seg.segment (*inliers, *coefficients);
+    if (inliers->indices.size () == 0)
+    {
+      std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
+
+    }
+
+    // Extract the inliers
+    extract.setInputCloud (cloud_filtered);
+    extract.setIndices (inliers);
+    extract.setNegative (false);
+    extract.filter (*cloud_p);
+  std::cerr << "Model coefficients: " << coefficients->values[0] << " " 
+                                      << coefficients->values[1] << " "
+                                      << coefficients->values[2] << " " 
+                                      << coefficients->values[3] << std::endl;
+    std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
+
+	plane(0) = coefficients->values[0];
+	plane(1) = coefficients->values[1];
+	plane(2) = coefficients->values[2];
+	plane(3) = coefficients->values[3];
+
+	planes.push_back(plane);
+
+    // Create the filtering object
+    extract.setNegative (true);
+    extract.filter (*cloud_f);
+    cloud_filtered.swap (cloud_f);
+
+
 }
-	//Remove duplicates
-	sort( P1.begin(), P1.end());
-	P1.erase( unique( P1.begin(), P1.end() ), P1.end() );
-	sort( P2.begin(), P2.end());
-	P2.erase( unique( P2.begin(), P2.end() ), P2.end() );
-	sort( P3.begin(), P3.end());
-	P3.erase( unique( P3.begin(), P3.end() ), P3.end() );
-	for(cnt = 0; cnt < P1.size();++cnt)		ROS_INFO("P1Point %d: at %d: %f - %f - %f", cnt, P1.at(cnt), cloud_filtered->points[ P1.at(cnt)].x, cloud_filtered->points[ P1.at(cnt)].y, cloud_filtered->points[ P1.at(cnt)].z);
+i = 0;
+int j = 0;
+int k = 0;
+bool marker_flag = false;
+Eigen::Vector3f intersection;
+Eigen::Vector3f parallel1, parallel2;
+while( i < (planes.size()-2) && marker_flag == false){
+	j = i+1; 
+	while(  j < (planes.size()-1)&& marker_flag == false){
+		k = j+1;
+		while(  k < planes.size()&& marker_flag == false){
 
-	for(cnt = 0; cnt < P2.size();++cnt)		ROS_INFO("P2Point %d: at %d: %f - %f - %f", cnt, P2.at(cnt), cloud_filtered->points[ P2.at(cnt)].x, cloud_filtered->points[ P2.at(cnt)].y, cloud_filtered->points[ P2.at(cnt)].z);
-	
-	for(cnt = 0; cnt < P3.size();++cnt)		ROS_INFO("P3Point %d: at %d: %f - %f - %f", cnt, P3.at(cnt), cloud_filtered->points[ P3.at(cnt)].x, cloud_filtered->points[ P3.at(cnt)].y, cloud_filtered->points[ P3.at(cnt)].z);
+			if(check_planes(planes.at(i),planes.at(j),planes.at(k))){
 
-	float fit1, fit2;
-	Eigen::Vector3f v12, v13;
-	int fit_ctr = 0;	
-	const int fit_size = P1.size()*P2.size()*P3.size();
-	fitnessClass fitness[fit_size];
-	ROS_INFO("Size: %d - %d - %d",P1.size(),P2.size(),P3.size());
-	  for(cnt = 0; cnt < P1.size();cnt++){	
+				float capr = ( planes.at(i)(2) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(2));
+				float daps = (planes.at(i)(3) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(3));
+				float bapq = (planes.at(i)(1) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(1));
+				float batu = (planes.at(i)(1) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(1));
+				intersection(2) = -(daps - (planes.at(i)(3) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(3))*bapq/batu)/(capr-(planes.at(i)(2) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(2))*bapq/batu); 	
+				intersection(1) = -(capr*intersection(2) + daps)/bapq;
+				intersection(0)	= (-planes.at(i)(1)*intersection(1) - planes.at(i)(2)*intersection(2) - planes.at(i)(3))/planes.at(i)(0);
+				parallel1 = normalized_cross_product(planes.at(i),planes.at(j));
+				parallel2 = normalized_cross_product(planes.at(i),planes.at(k));
+				ROS_INFO("Found a marker at %f - %f - %f", intersection(0),intersection(1),intersection(2)); 
+				marker_flag = true;
 
-		for(int cnt2 = 0; cnt2 < P2.size();cnt2++){	
-
-			for(int cnt3 = 0; cnt3 < P3.size();cnt3++){	
-				v12 = vector_of(cloud_filtered->points[P1.at(cnt)],cloud_filtered->points[P2.at(cnt2)]);
-				v13 = vector_of(cloud_filtered->points[P1.at(cnt)],cloud_filtered->points[P3.at(cnt3)]);
-				fit1 = fabs((length_of(v12)/0.3)-1);
-				fit2 = fabs((length_of(v13)/0.4)-1);
-				angle = fabs((acos(dot_product(v12,v13)/(length_of(v12)*length_of(v13)))/1.5708)-1);
-				fitness[fit_ctr].score = fit1+fit2+angle;
-				fitness[fit_ctr].P1 = P1.at(cnt);
-				fitness[fit_ctr].P2 = P2.at(cnt2);
-				fitness[fit_ctr].P3 = P3.at(cnt3);
-				++fit_ctr;
-				ROS_INFO("Fitness: %f -- %f -- %f : %f",fit1, fit2, angle, fit1+fit2+angle);
 			}
+		++k;
 		}
+	++j;
 	}
+++i;
+}
 
-/*
-	//Average clusters together	
-	for(int ctr = 0; ctr < P1.size(); ++ctr){
-		P1x += cloud_filtered->points[P1.at(ctr)].x;
-		P1y += cloud_filtered->points[P1.at(ctr)].y;
-		P1z += cloud_filtered->points[P1.at(ctr)].z;
-	}
-	P1x = P1x/P1.size();
-	P1y = P1y/P1.size();
-	P1z = P1z/P1.size();
-	for(int ctr = 0; ctr < P2.size(); ++ctr){
-		P2x += cloud_filtered->points[P2.at(ctr)].x;
-		P2y += cloud_filtered->points[P2.at(ctr)].y;
-		P2z += cloud_filtered->points[P2.at(ctr)].z;
-	}
-	P2x = P2x/P2.size();
-	P2y = P2y/P2.size();
-	P2z = P2z/P2.size();
-	for(int ctr = 0; ctr < P3.size(); ++ctr){
-		P3x += cloud_filtered->points[P3.at(ctr)].x;
-		P3y += cloud_filtered->points[P3.at(ctr)].y;
-		P3z += cloud_filtered->points[P3.at(ctr)].z;
-	}
-	P3x = P3x/P3.size();
-	P3y = P3y/P3.size();
-	P3z = P3z/P3.size();
-		
-	int p1size = P1.size();
-	int p2size = P2.size();
-	int p3size = P3.size();
+if(marker_flag == false) ROS_INFO("Couldn't find marker");
 
-	ROS_INFO("Location of marker (accuracy %f):",LAcc);
-	ROS_INFO("P1 (%d pts): %f - %f - %f",p1size, P1x,P1y,P1z);
-	ROS_INFO("P2 (%d pts): %f - %f - %f",p2size, P2x,P2y,P2z);
-	ROS_INFO("P3 (%d pts): %f - %f - %f",p3size, P3x,P3y,P3z);	
-
-	float magP12 = sqrt(pow(P2x-P1x,2)+pow(P2y-P1y,2)+pow(P2z-P1z,2));
-	float magP13 = sqrt(pow(P3x-P1x,2)+pow(P3y-P1y,2)+pow(P3z-P1z,2));
-	float magP23 = sqrt(pow(P3x-P2x,2)+pow(P3y-P2y,2)+pow(P3z-P2z,2));
-	marker_location(0,0) = P1x;
-	marker_location(0,1) = P1y;
-	marker_location(0,2) = P1z;
-	marker_location(1,0) = P1x + 0.3*(P2x-P1x)/magP12;
-	marker_location(1,1) = P1y + 0.3*(P2y-P1y)/magP12;
-	marker_location(1,2) = P1z + 0.3*(P2z-P1z)/magP12;
-	marker_location(2,0) = P1x + 0.4*(P3x-P1x)/magP13;
-	marker_location(2,1) = P1y + 0.4*(P3y-P1y)/magP13;
-	marker_location(2,2) = P1z + 0.4*(P3z-P1z)/magP13;
-
-/*
-	P1x = marker_location(0,0);
-	P1y = marker_location(0,1);
-	P1z = marker_location(0,2);
-	P2x = marker_location(1,0);
-	P2y = marker_location(1,1);
-	P2z = marker_location(1,2);
-	P3x = marker_location(2,0);
-	P3y = marker_location(2,1);
-	P3z = marker_location(2,2);
-*/
-
-	float score = 100;
-	for(fit_ctr = 0; fit_ctr<fit_size;++fit_ctr){
-		if(fitness[fit_ctr].score < score){
-			score = fitness[fit_ctr].score;
-			P1x = cloud_filtered->points[fitness[fit_ctr].P1].x;
-			P1y = cloud_filtered->points[fitness[fit_ctr].P1].y;
-			P1z = cloud_filtered->points[fitness[fit_ctr].P1].z;
-			P2x = cloud_filtered->points[fitness[fit_ctr].P2].x;
-			P2y = cloud_filtered->points[fitness[fit_ctr].P2].y;
-			P2z = cloud_filtered->points[fitness[fit_ctr].P2].z;
-			P3x = cloud_filtered->points[fitness[fit_ctr].P3].x;
-			P3y = cloud_filtered->points[fitness[fit_ctr].P3].y;
-			P3z = cloud_filtered->points[fitness[fit_ctr].P3].z;
-		}
-	}
+	float P1x = intersection(0);
+	float P1y = intersection(1);
+	float P1z = intersection(2);
+	float P2x = intersection(0) + parallel1(0);
+	float P2y = intersection(1) + parallel1(1);
+	float P2z = intersection(2) + parallel1(2);
+	float P3x = intersection(0) + parallel2(0);
+	float P3y = intersection(1) + parallel2(1);
+	float P3z = intersection(2) + parallel2(1);
 
 	ROS_INFO("Using:");
 	ROS_INFO("P1: %f - %f - %f", P1x,P1y,P1z);
@@ -390,13 +362,17 @@ main (int argc, char** argv)
   ros::init (argc, argv, "my_pcl_tutorial");
   ros::NodeHandle nh;
 
+    std::stringstream ss;
+    ss << "/home/mike/marker/" << argv[1] << ".pcd";
+
   ros::Publisher pub;
   ros::Publisher pub1;
   ros::Publisher pub2;
   ros::Publisher pub3;
   ros::Publisher pub4;
+  ros::Publisher pub5;
+  ros::Publisher pub6;
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZI>);
  // pcl::PointCloud<pcl::PointXYZI>::Ptr marker (new pcl::PointCloud<pcl::PointXYZI>);
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudA_filtered (new pcl::PointCloud<pcl::PointXYZI> );
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudB_filtered (new pcl::PointCloud<pcl::PointXYZI> );
@@ -421,7 +397,9 @@ main (int argc, char** argv)
   pub1 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_2", 1, true);
   pub2 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_3", 1, true);
   pub3 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_4", 1, true);
-  pub4 = nh.advertise<sensor_msgs::PointCloud2> ("unaligned", 1, true);
+  pub4 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_5", 1, true);
+  pub5 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_6", 1, true);
+  pub6 = nh.advertise<sensor_msgs::PointCloud2> ("unaligned", 1, true);
 
 ros::Publisher vis_pub = nh.advertise<visualization_msgs::Marker>( "visualization_marker0", 0 , true);
 ros::Publisher vis_pub1 = nh.advertise<visualization_msgs::Marker>( "visualization_marker1", 0 , true);
@@ -438,34 +416,26 @@ ros::Publisher vis_pub3 = nh.advertise<visualization_msgs::Marker>( "visualizati
 	marker_loc_world(2,1) = 0;
 	marker_loc_world(2,2) = 0;
 
-setVerbosityLevel(pcl::console::L_VERBOSE); 
-
-  // load a file
-  /*  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/oldmarker.pcd", *marker) == -1) 
-    {
-      PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
-
-      return(0);
-*/
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/t1.pcd", *cloudA) == -1) 
+//setVerbosityLevel(pcl::console::L_VERBOSE); 
+ if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p1.pcd", *cloudA) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/t2.pcd", *cloudB) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p2.pcd", *cloudB) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/t1.pcd", *cloudC) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p3.pcd", *cloudC) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/t2.pcd", *cloudD) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p4.pcd", *cloudD) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
@@ -684,6 +654,5 @@ output5.header.frame_id = "base_link";
   pub4.publish (output5);
 ros::spinOnce();
 std::cout << "Done" << std::endl;
-
 
 }

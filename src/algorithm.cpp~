@@ -48,10 +48,10 @@
 #include <pcl/registration/correspondence_rejection_distance.h>
 #include <pcl/registration/transformation_estimation_lm.h>
 #define DEBUG 0
-#define L1 0.2513803274
-#define L2 0.3254835709
-#define L3 0.196127621
-#define LAcc 0.01
+#define L1 0.500435
+#define L2 0.530207
+#define L3 0.974739
+#define LAcc 0.05
 int cloudctr = 0;
 
 	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZI> );
@@ -146,11 +146,11 @@ int locate_marker(const pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_src, Eigen::M
 	P2.erase( unique( P2.begin(), P2.end() ), P2.end() );
 	sort( P3.begin(), P3.end());
 	P3.erase( unique( P3.begin(), P3.end() ), P3.end() );
-	//for(cnt = 0; cnt < P1.size();++cnt)		ROS_INFO("P1Point %d: at %d: %f - %f - %f", cnt, P1.at(cnt), cloud_filtered->points[ P1.at(cnt)].x, cloud_filtered->points[ P1.at(cnt)].y, cloud_filtered->points[ P1.at(cnt)].z);
+	for(cnt = 0; cnt < P1.size();++cnt)		ROS_INFO("P1Point %d: at %d: %f - %f - %f", cnt, P1.at(cnt), cloud_filtered->points[ P1.at(cnt)].x, cloud_filtered->points[ P1.at(cnt)].y, cloud_filtered->points[ P1.at(cnt)].z);
 
-	//for(cnt = 0; cnt < P2.size();++cnt)		ROS_INFO("P2Point %d: at %d: %f - %f - %f", cnt, P2.at(cnt), cloud_filtered->points[ P2.at(cnt)].x, cloud_filtered->points[ P2.at(cnt)].y, cloud_filtered->points[ P2.at(cnt)].z);
+	for(cnt = 0; cnt < P2.size();++cnt)		ROS_INFO("P2Point %d: at %d: %f - %f - %f", cnt, P2.at(cnt), cloud_filtered->points[ P2.at(cnt)].x, cloud_filtered->points[ P2.at(cnt)].y, cloud_filtered->points[ P2.at(cnt)].z);
 	
-	//for(cnt = 0; cnt < P3.size();++cnt)		ROS_INFO("P3Point %d: at %d: %f - %f - %f", cnt, P3.at(cnt), cloud_filtered->points[ P3.at(cnt)].x, cloud_filtered->points[ P3.at(cnt)].y, cloud_filtered->points[ P3.at(cnt)].z);
+	for(cnt = 0; cnt < P3.size();++cnt)		ROS_INFO("P3Point %d: at %d: %f - %f - %f", cnt, P3.at(cnt), cloud_filtered->points[ P3.at(cnt)].x, cloud_filtered->points[ P3.at(cnt)].y, cloud_filtered->points[ P3.at(cnt)].z);
 	
 	//Average clusters together	
 	for(int ctr = 0; ctr < P1.size(); ++ctr){
@@ -244,25 +244,25 @@ setVerbosityLevel(pcl::console::L_VERBOSE);
 
       return(0);
     }*/
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/mx1.pcd", *cloudA) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p1.pcd", *cloudA) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/mx2.pcd", *cloudB) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p2.pcd", *cloudB) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/mx3.pcd", *cloudC) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p3.pcd", *cloudC) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/mx4.pcd", *cloudD) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/p4.pcd", *cloudD) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
@@ -273,13 +273,13 @@ Eigen::Matrix3f marker_locB;
 Eigen::Matrix3f marker_locC;
 Eigen::Matrix3f marker_locD;
 ROS_INFO("Locating MarkerA");
-//int ret = locate_marker(cloudA, marker_locA);
+int ret = locate_marker(cloudA, marker_locA);
 ROS_INFO("Locating MarkerB");
-//ret = locate_marker(cloudB, marker_locB);
+ret = locate_marker(cloudB, marker_locB);
 ROS_INFO("Locating MarkerC");
-int ret = locate_marker(cloudC, marker_locC);
+ret = locate_marker(cloudC, marker_locC);
 ROS_INFO("Locating MarkerD");
-//ret = locate_marker(cloudD, marker_locD);
+ret = locate_marker(cloudD, marker_locD);
 
 visualization_msgs::Marker marker;
 marker.header.frame_id = "base_link";
