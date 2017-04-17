@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   qt_build
   pcl_conversions 
   pcl_ros 
+dynamic_reconfigure
 )
 find_package(PCL 1.7 REQUIRED)
 
@@ -52,7 +53,10 @@ find_package(PCL 1.7 REQUIRED)
 #   Message1.msg
 #   Message2.msg
 # )
-
+generate_dynamic_reconfigure_options(
+  cfg/test.cfg
+  #...
+)
 ## Generate services in the 'srv' folder
 # add_service_files(
 #   FILES
@@ -142,7 +146,15 @@ add_executable(saveapcd src/savepcd.cpp)
 add_executable(testing src/testing2.cpp)
 add_executable(algorithm src/algorithm.cpp)
 add_executable(matching_test src/matching.cpp)
+add_executable(planes src/planes.cpp)
+add_executable(test_planes src/planes2.cpp)
+add_executable(showclouds src/showclouds.cpp)
+add_executable(showcloud src/showcloud.cpp)
+add_executable(cloudloop src/cloudloop.cpp)
+add_executable(segmentation src/segmentation.cpp)
 add_executable(keypoints src/show_keypoints.cpp)
+
+add_dependencies(cloudloop ${PROJECT_NAME}_gencfg)
 
 ## Declare a cpp library
  add_library(${PROJECT_NAME} 
@@ -168,6 +180,12 @@ add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(saveapcd  ${catkin_LIBRARIES})
 target_link_libraries(algorithm  ${catkin_LIBRARIES})
 target_link_libraries(matching_test  ${catkin_LIBRARIES})
+target_link_libraries(showclouds  ${catkin_LIBRARIES})
+target_link_libraries(showcloud  ${catkin_LIBRARIES})
+target_link_libraries(cloudloop  ${catkin_LIBRARIES})
+target_link_libraries(planes  ${catkin_LIBRARIES})
+target_link_libraries(test_planes  ${catkin_LIBRARIES})
+target_link_libraries(segmentation  ${catkin_LIBRARIES})
 target_link_libraries(testing  ${catkin_LIBRARIES} libvtkCommon.so libvtkFiltering.so)
 target_link_libraries(keypoints  ${catkin_LIBRARIES} libvtkCommon.so libvtkFiltering.so )
 
