@@ -72,7 +72,13 @@ ros::Publisher vis_pub;
 ros::Publisher vis_pub1;
 ros::Publisher vis_pub2;
 ros::Publisher vis_pub3;
+  ros::Publisher pub;
   ros::Publisher pub1;
+  ros::Publisher pub2;
+  ros::Publisher pub3;
+  ros::Publisher pub4;
+  ros::Publisher pub5;
+  ros::Publisher pub6;
 visualization_msgs::Marker marker1;
 visualization_msgs::Marker marker2;
 visualization_msgs::Marker marker3;
@@ -223,6 +229,7 @@ Eigen::Matrix4f locate_marker(const pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_s
 	
 
    sensor_msgs::PointCloud2 output2;
+   sensor_msgs::PointCloud2 output3;
 	Eigen::Matrix4f transform_mat;
 
 
@@ -248,14 +255,14 @@ pcl::toPCLPointCloud2 ( *cloud_src,*cloud_blob);
   // Create the segmentation object
     pcl::SACSegmentationFromNormals<pcl::PointXYZI, pcl::Normal> seg; 
   // Optional
-  seg.setOptimizeCoefficients (true);
+  seg.setOptimizeCoefficients (false);
   // Mandatory
   seg.setModelType (11);
   seg.setMethodType (pcl::SAC_RANSAC);
   seg.setMaxIterations (1000);
   seg.setDistanceThreshold (0.02);
-  seg.setNormalDistanceWeight(0.1);
-  seg.setEpsAngle(0.05);
+  seg.setNormalDistanceWeight(0.5);
+  seg.setEpsAngle(0.09);
   // Create the filtering object
   pcl::ExtractIndices<pcl::PointXYZI> extract;
   pcl::ExtractIndices<pcl::Normal> extract_normals;
@@ -277,7 +284,7 @@ ne.setSearchSurface (cloud_src);
   pcl::PointCloud<pcl::Normal>::Ptr cloud_normals_f (new pcl::PointCloud<pcl::Normal>);
 
   // Use all neighbors in a sphere of radius 3cm
-  ne.setRadiusSearch (0.15);
+  ne.setRadiusSearch (0.10);
 
   // Compute the features
   ne.compute (*cloud_normals);
@@ -339,11 +346,15 @@ ROS_INFO("Points left %d, counts %d", cloud_filtered->points.size(), cnts);
                                       << coefficients->values[2] << " " 
                                       << coefficients->values[3] << std::endl;
     std::cerr << "PointCloud representing the planar component: " << cloud_p->width * cloud_p->height << " data points." << std::endl;
-  pcl::toROSMsg(*cloud_p, output2);
+  pcl::toROSMsg(*cloud_filtered, output2);
 output2.header.frame_id = "base_link";
 output2.header.stamp = ros::Time::now();
+  pcl::toROSMsg(*cloud_p, output3);
+output3.header.frame_id = "base_link";
+output3.header.stamp = ros::Time::now();
 
   pub1.publish (output2);
+  pub2.publish (output3);
 ros::spinOnce();
 	plane(0) = coefficients->values[0];
 	plane(1) = coefficients->values[1];
@@ -574,12 +585,6 @@ main (int argc, char** argv)
     std::stringstream ss;
     ss << "/home/mike/marker/" << argv[1] << ".pcd";
 
-  ros::Publisher pub;
-  ros::Publisher pub2;
-  ros::Publisher pub3;
-  ros::Publisher pub4;
-  ros::Publisher pub5;
-  ros::Publisher pub6;
 
  // pcl::PointCloud<pcl::PointXYZI>::Ptr marker (new pcl::PointCloud<pcl::PointXYZI>);
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudA_filtered (new pcl::PointCloud<pcl::PointXYZI> );

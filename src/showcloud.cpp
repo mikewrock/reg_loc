@@ -57,7 +57,7 @@ main (int argc, char** argv)
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudD_aligned (new pcl::PointCloud<pcl::PointXYZI> );
 
   // Create a ROS publisher for the output point cloud
-  pub = nh.advertise<sensor_msgs::PointCloud2> ("aligned_1", 1, true);
+  pub = nh.advertise<sensor_msgs::PointCloud2> ("assembled_cloud", 1, true);
   pub1 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_2", 1, true);
   pub2 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_3", 1, true);
   pub3 = nh.advertise<sensor_msgs::PointCloud2> ("aligned_4", 1, true);
@@ -70,6 +70,9 @@ ros::Publisher vis_pub1 = nh.advertise<visualization_msgs::Marker>( "visualizati
 ros::Publisher vis_pub2 = nh.advertise<visualization_msgs::Marker>( "visualization_marker2", 0 , true);
 ros::Publisher vis_pub3 = nh.advertise<visualization_msgs::Marker>( "visualization_marker3", 0 , true);
 
+    std::stringstream ss;
+    ss << "/home/mike/marker/" << argv[1];
+
   // load a file
   /*  if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/oldmarker.pcd", *marker) == -1) 
     {
@@ -77,7 +80,7 @@ ros::Publisher vis_pub3 = nh.advertise<visualization_msgs::Marker>( "visualizati
 
       return(0);
 */
-    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/pl1.pcd", *cloudA) == -1) 
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> (ss.str(), *cloudA) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
@@ -105,31 +108,15 @@ ros::Publisher vis_pub3 = nh.advertise<visualization_msgs::Marker>( "visualizati
    sensor_msgs::PointCloud2 output1;
   pcl::toROSMsg(*cloudA, output1);
 output1.header.frame_id = "base_link";
+ros::Rate r(.10); 
+while(ros::ok()){
 output1.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output2;
-  pcl::toROSMsg(*cloudB, output2);
-output2.header.frame_id = "base_link";
-output2.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output3;
-  pcl::toROSMsg(*cloudC, output3);
-output3.header.frame_id = "base_link";
-output3.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output4;
-  pcl::toROSMsg(*cloudD, output4);
-output4.header.frame_id = "base_link";
-output4.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output5;
-  pcl::toROSMsg(*cloudA, output5);
-output5.header.frame_id = "base_link";
-output5.header.stamp = ros::Time::now();
-
 // Publish the data
   pub.publish (output1);
-  pub1.publish (output2);
-  pub2.publish (output3);
-  pub3.publish (output4);
-  pub4.publish (output5);
 ros::spinOnce();
+
+  r.sleep();
+}
 std::cout << "Done" << std::endl;
 
 
