@@ -61,10 +61,11 @@
 
 #define DEBUG 0
 
-#define L12 0.30
-#define L13 0.40
+#define L12 0.00703381219
+#define DOT 0.439
 #define L23 0.50
-#define LACC 0.005
+#define LACC 0.05
+#define LACC2 0.15
 int cloudctr = 0;
 
 
@@ -90,20 +91,23 @@ float dot_product(Eigen::Vector3f first,Eigen::Vector3f second){
 
 
 }
-bool check_planes(Eigen::Vector4f first,Eigen::Vector4f second,Eigen::Vector4f third){
-	Eigen::Vector3f normal1, normal2, normal3;
+float check_planes(Eigen::Vector4f first,Eigen::Vector4f second){
+	Eigen::Vector3f normal1, normal2, normal3, dots;
 	normal1(0) = first(0);
 	normal1(1) = first(1);
 	normal1(2) = first(2);
 	normal2(0) = second(0);
 	normal2(1) = second(1);
 	normal2(2) = second(2);
-	normal3(0) = third(0);
-	normal3(1) = third(1);
-	normal3(2) = third(2);
-	ROS_INFO("Plane check %f - %f - %f",dot_product(normal1,normal2),dot_product(normal1,normal3),dot_product(normal3,normal2));
-	if(fabs(dot_product(normal1,normal2))<0.01 && fabs(dot_product(normal1,normal3))<0.01 && fabs(dot_product(normal3,normal2)<0.01))	return true;
-	else return false;
+	normal3(0) = 0;
+	normal3(1) = 0;
+	normal3(2) = 1;
+	dots(0) = dot_product(normal1,normal2);
+	dots(1) = dot_product(normal1,normal3);
+	dots(2) = dot_product(normal3,normal2);
+//ROS_INFO("Plane value %f -- %f -- %f",dots(0), dots(1), dots(2));
+	if(fabs((fabs(dots(0))-DOT)) < LACC && (fabs(dots(1)) + fabs(dots(2))) < LACC2) return dots(0);
+	else return 200;
 	
 
 
@@ -148,6 +152,35 @@ Eigen::Vector3f cross_product(Eigen::Vector4f first,Eigen::Vector4f second){
 
 }
 
+Eigen::Vector3f normalized_cross_product(Eigen::Vector4f first,Eigen::Vector3f second){
+
+	Eigen::Vector3f ret;
+	ret(0) = first(1)*second(2)-first(2)*second(1);
+	ret(1) = first(2)*second(0)-first(0)*second(2);
+	ret(2) = first(0)*second(1)-first(1)*second(0);
+	float m = sqrt(pow(ret(0),2)+pow(ret(1),2)+pow(ret(2),2));
+	ret(0) = ret(0)/m;
+	ret(1) = ret(1)/m;
+	ret(2) = ret(2)/m;
+	return ret;
+
+
+}
+
+Eigen::Vector3f normalized_cross_product(Eigen::Vector3f first,Eigen::Vector4f second){
+
+	Eigen::Vector3f ret;
+	ret(0) = first(1)*second(2)-first(2)*second(1);
+	ret(1) = first(2)*second(0)-first(0)*second(2);
+	ret(2) = first(0)*second(1)-first(1)*second(0);
+	float m = sqrt(pow(ret(0),2)+pow(ret(1),2)+pow(ret(2),2));
+	ret(0) = ret(0)/m;
+	ret(1) = ret(1)/m;
+	ret(2) = ret(2)/m;
+	return ret;
+
+
+}
 Eigen::Vector3f normalized_cross_product(Eigen::Vector3f first,Eigen::Vector3f second){
 
 	Eigen::Vector3f ret;
@@ -177,7 +210,7 @@ Eigen::Vector3f normalized_cross_product(Eigen::Vector4f first,Eigen::Vector4f s
 
 }
 
-Eigen::Matrix4f locate_marker(const pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_src, Eigen::Matrix4f &marker_location){
+Eigen::Matrix4f locate_marker(const pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_src, Eigen::Matrix3f &marker_location){
 	
 
 	Eigen::Matrix4f transform_mat;
@@ -192,7 +225,7 @@ pcl::toPCLPointCloud2 ( *cloud_src,*cloud_blob);
   // Create the filtering object: downsample the dataset using a leaf size of 1cm
   pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
   sor.setInputCloud (cloud_blob);
-  sor.setLeafSize (0.01f, 0.01f, 0.01f);
+  sor.setLeafSize (0.02f, 0.02f, 0.02f);
   sor.filter (*cloud_filtered_blob);
 
   // Convert to the templated PointCloud
@@ -203,28 +236,69 @@ pcl::toPCLPointCloud2 ( *cloud_src,*cloud_blob);
   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients ());
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
   // Create the segmentation object
-  pcl::SACSegmentation<pcl::PointXYZI> seg;
+    pcl::SACSegmentationFromNormals<pcl::PointXYZI, pcl::Normal> seg; 
   // Optional
   seg.setOptimizeCoefficients (true);
   // Mandatory
-  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setModelType (11);
   seg.setMethodType (pcl::SAC_RANSAC);
   seg.setMaxIterations (1000);
-  seg.setDistanceThreshold (0.01);
-
+  seg.setDistanceThreshold (0.02);
+  seg.setNormalDistanceWeight(0.1);
+  seg.setEpsAngle(0.05);
   // Create the filtering object
   pcl::ExtractIndices<pcl::PointXYZI> extract;
+  pcl::ExtractIndices<pcl::Normal> extract_normals;
 
   int i = 0, nr_points = (int) cloud_filtered->points.size ();
+
+  // Create the normal estimation class, and pass the input dataset to it
+  pcl::NormalEstimation<pcl::PointXYZI, pcl::Normal> ne;
+  ne.setInputCloud (cloud_filtered);
+
+ne.setSearchSurface (cloud_src);
+  // Create an empty kdtree representation, and pass it to the normal estimation object.
+  // Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
+  pcl::search::KdTree<pcl::PointXYZI>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZI> ());
+  ne.setSearchMethod (tree);
+
+  // Output datasets
+  pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
+  pcl::PointCloud<pcl::Normal>::Ptr cloud_normals_f (new pcl::PointCloud<pcl::Normal>);
+
+  // Use all neighbors in a sphere of radius 3cm
+  ne.setRadiusSearch (0.15);
+
+  // Compute the features
+  ne.compute (*cloud_normals);
  
 std::vector<Eigen::Vector4f> planes;
 Eigen::Vector4f plane;
  // While 30% of the original cloud is still there
+ROS_INFO("Points %d", nr_points);
+//cloud_filtered->points.size () > 0.5 * nr_points &&
+int cnts = 0;
+i = 0;
+int j = 0;
+int k = 0;
+bool marker_flag = false;
+Eigen::Vector3f intersection, holder;
+Eigen::Vector3f best_intersection(100,100,100);
+float best_value = 100;
+float value;
+Eigen::Vector3f purpendicular,parallel1, parallel2;
 
-  while (cloud_filtered->points.size () > 0.5 * nr_points)
+
+
+
+
+  while ( ros::ok() && cnts < 30 && best_value > 1)
   {
+++cnts;
+ROS_INFO("Points left %d, counts %d", cloud_filtered->points.size(), cnts);
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud (cloud_filtered);
+    seg.setInputNormals(cloud_normals); 
     seg.segment (*inliers, *coefficients);
     if (inliers->indices.size () == 0)
     {
@@ -249,48 +323,65 @@ Eigen::Vector4f plane;
 	plane(3) = coefficients->values[3];
 
 	planes.push_back(plane);
+i = 0;
+while( i < (planes.size()-1) && planes.size() >= 2 && best_value > 1){
+	j = i+1; 
+	while(  j < (planes.size())){
+			value = check_planes(planes.at(i),planes.at(j));	
+			
+			if(fabs(fabs(value)-DOT) < best_value){
+				float capr = ( planes.at(i)(2) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(2));
+				float daps = (planes.at(i)(3) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(3));
+				float bapq = (planes.at(i)(1) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(1));
+				float batu = (planes.at(i)(1) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(1));
+				intersection(2) = 0; 	
+				intersection(1) = (-planes.at(i)(3) + (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(3))/(planes.at(i)(1)-(planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(1));
+				intersection(0)	= (-planes.at(i)(1)*intersection(1)-planes.at(i)(3))/planes.at(i)(0);
+				purpendicular(0) = 0;
+				purpendicular(1) = 0;
+				purpendicular(2) = 1;
+				holder = normalized_cross_product(planes.at(i),planes.at(j));
+				if(holder(2) > 0){
+				if(value > 0) parallel1 = normalized_cross_product(purpendicular,planes.at(i));
+
+				else	parallel1 = normalized_cross_product(planes.at(i),purpendicular);
+					parallel2 = normalized_cross_product(purpendicular,planes.at(j));
+				}
+				else{
+				if(value > 0) {parallel2 = normalized_cross_product(purpendicular,planes.at(i));
+
+
+					parallel1 = normalized_cross_product(purpendicular,planes.at(j));
+				}
+				else	{parallel1 = normalized_cross_product(planes.at(i),purpendicular);
+					parallel2 = normalized_cross_product(purpendicular,planes.at(j));
+}
+				}
+				ROS_INFO("Found a marker at %f - %f - %f\nvalue - %f - holder - %f", intersection(0),intersection(1),intersection(2),value, holder(2)); 
+				best_value = fabs(fabs(value)-DOT);
+				marker_flag = true;
+
+			}
+	++j;
+	}
+++i;
+}
 
     // Create the filtering object
     extract.setNegative (true);
     extract.filter (*cloud_f);
     cloud_filtered.swap (cloud_f);
 
+    extract_normals.setInputCloud (cloud_normals);
+    extract_normals.setIndices (inliers);
+    extract_normals.setNegative (true);
+    extract_normals.filter (*cloud_normals_f);
+    cloud_normals.swap (cloud_normals_f);
+
 
 }
-i = 0;
-int j = 0;
-int k = 0;
-bool marker_flag = false;
-Eigen::Vector3f intersection;
-Eigen::Vector3f parallel1, parallel2, parallel3;
-while( i < (planes.size()-2) && marker_flag == false){
-	j = i+1; 
-	while(  j < (planes.size()-1)&& marker_flag == false){
-		k = j+1;
-		while(  k < planes.size()&& marker_flag == false){
 
-			if(check_planes(planes.at(i),planes.at(j),planes.at(k))){
 
-				float capr = ( planes.at(i)(2) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(2));
-				float daps = (planes.at(i)(3) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(3));
-				float bapq = (planes.at(i)(1) - (planes.at(i)(0)/planes.at(j)(0))*planes.at(j)(1));
-				float batu = (planes.at(i)(1) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(1));
-				intersection(2) = -(daps - (planes.at(i)(3) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(3))*bapq/batu)/(capr-(planes.at(i)(2) - (planes.at(i)(0)/planes.at(k)(0))*planes.at(k)(2))*bapq/batu); 	
-				intersection(1) = -(capr*intersection(2) + daps)/bapq;
-				intersection(0)	= (-planes.at(i)(1)*intersection(1) - planes.at(i)(2)*intersection(2) - planes.at(i)(3))/planes.at(i)(0);
-				parallel1 = normalized_cross_product(planes.at(i),planes.at(j));
-				parallel2 = normalized_cross_product(planes.at(i),planes.at(k));
-				parallel3 = normalized_cross_product(planes.at(j),planes.at(k));
-				ROS_INFO("Found a marker at %f - %f - %f", intersection(0),intersection(1),intersection(2)); 
-				marker_flag = true;
-
-			}
-		++k;
-		}
-	++j;
-	}
-++i;
-}
 
 if(marker_flag == false) ROS_INFO("Couldn't find marker");
 
@@ -318,9 +409,6 @@ if(marker_flag == false) ROS_INFO("Couldn't find marker");
 	marker_location(2,0) = P3x;
 	marker_location(2,1) = P3y;
 	marker_location(2,2) = P3z;
-	marker_location(3,0) = intersection(0) + parallel3(0);
-	marker_location(3,1) = intersection(1) + parallel3(1);
-	marker_location(3,2) = intersection(2) + parallel3(2);
 
 	//Calculate rotation matrix
 	
@@ -395,6 +483,7 @@ main (int argc, char** argv)
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudB_aligned (new pcl::PointCloud<pcl::PointXYZI> );
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudC_aligned (new pcl::PointCloud<pcl::PointXYZI> );
   pcl::PointCloud<pcl::PointXYZI>::Ptr cloudD_aligned (new pcl::PointCloud<pcl::PointXYZI> );
+  pcl::PointCloud<pcl::PointXYZI>::Ptr cloudfinal_aligned (new pcl::PointCloud<pcl::PointXYZI> );
 
   // Create a ROS publisher for the output point cloud
   pub = nh.advertise<sensor_msgs::PointCloud2> ("aligned_1", 1, true);
@@ -411,16 +500,47 @@ ros::Publisher vis_pub2 = nh.advertise<visualization_msgs::Marker>( "visualizati
 ros::Publisher vis_pub3 = nh.advertise<visualization_msgs::Marker>( "visualization_marker3", 0 , true);
 
 
+
 //setVerbosityLevel(pcl::console::L_VERBOSE); 
- if (pcl::io::loadPCDFile<pcl::PointXYZI> (ss.str(), *cloudA) == -1) 
+ if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/plane1.pcd", *cloudA) == -1) 
     {
       PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
 
       return(0);
     }
-Eigen::Matrix4f marker_locA;
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/plane2.pcd", *cloudB) == -1) 
+    {
+      PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+
+      return(0);
+    }
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/plane3.pcd", *cloudC) == -1) 
+    {
+      PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+
+      return(0);
+    }
+    if (pcl::io::loadPCDFile<pcl::PointXYZI> ("/home/mike/marker/plane4.pcd", *cloudD) == -1) 
+    {
+      PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+
+      return(0);
+    }Eigen::Matrix3f marker_locA;
+Eigen::Matrix3f marker_locB;
+Eigen::Matrix3f marker_locC;
+Eigen::Matrix3f marker_locD;
 Eigen::Matrix4f transformA;
-ROS_INFO("Locating Marker");
+Eigen::Matrix4f transformB;
+Eigen::Matrix4f transformC;
+Eigen::Matrix4f transformD;
+ROS_INFO("Locating Markers");   
+sensor_msgs::PointCloud2 output5;
+  pcl::toROSMsg(*cloudA, output5);
+output5.header.frame_id = "base_link";
+output5.header.stamp = ros::Time::now();
+
+  pub4.publish (output5);
+ros::spinOnce();
 transformA = locate_marker(cloudA, marker_locA);
 visualization_msgs::Marker marker1;
 visualization_msgs::Marker marker2;
@@ -448,7 +568,6 @@ marker1.color.r = 1.0;
 marker1.color.g = 1.0;
 marker1.color.b = 1.0;
 vis_pub.publish( marker1 );
-
 marker2.header.frame_id = "base_link";
 marker2.header.stamp = ros::Time();
 marker2.ns = "my_namespace";
@@ -493,82 +612,280 @@ marker3.color.r = 0.0;
 marker3.color.g = 0.0;
 marker3.color.b = 1.0;
 vis_pub2.publish( marker3 );
+Eigen::Matrix4f transformAA = transformA.inverse();
+pcl::transformPointCloud (*cloudA, *cloudA_aligned, transformAA);
+   sensor_msgs::PointCloud2 output1;
+  pcl::toROSMsg(*cloudA_aligned, output1);
+output1.header.frame_id = "base_link";
+output1.header.stamp = ros::Time::now();
+  pub.publish (output1);  
+ros::spinOnce();
+/*transformB = locate_marker(cloudB, marker_locB);
+marker1.header.frame_id = "base_link";
+marker1.header.stamp = ros::Time();
+marker1.ns = "my_namespace";
+marker1.id = 0;
+marker1.type = visualization_msgs::Marker::SPHERE;
+marker1.action = visualization_msgs::Marker::ADD;
+marker1.pose.position.x = marker_locB(0,0);
+marker1.pose.position.y = marker_locB(0,1);
+marker1.pose.position.z = marker_locB(0,2);
+marker1.pose.orientation.x = 0.0;
+marker1.pose.orientation.y = 0.0;
+marker1.pose.orientation.z = 0.0;
+marker1.pose.orientation.w = 1.0;
+marker1.scale.x = 0.1;
+marker1.scale.y = 0.1;
+marker1.scale.z = 0.1;
+marker1.color.a = 1.0; // Don't forget to set the alpha!
+marker1.color.r = 1.0;
+marker1.color.g = 1.0;
+marker1.color.b = 1.0;
+vis_pub.publish( marker1 );
+marker2.header.frame_id = "base_link";
+marker2.header.stamp = ros::Time();
+marker2.ns = "my_namespace";
+marker2.id = 1;
+marker2.type = visualization_msgs::Marker::ARROW;
+marker2.action = visualization_msgs::Marker::ADD;
 
-marker4.header.frame_id = "base_link";
-marker4.header.stamp = ros::Time();
-marker4.ns = "my_namespace";
-marker4.id = 3;
-marker4.type = visualization_msgs::Marker::ARROW;
-marker4.action = visualization_msgs::Marker::ADD;
+ marker2.points.resize(2);
+     marker2.points[0].x = marker_locB(0,0);
+     marker2.points[0].y = marker_locB(0,1);
+     marker2.points[0].z = marker_locB(0,2);
+     marker2.points[1].x = marker_locB(1,0);
+     marker2.points[1].y = marker_locB(1,1);
+     marker2.points[1].z = marker_locB(1,2);
+marker2.scale.x = m_size;
+marker2.scale.y = m_size;
+marker2.scale.z = m_size;
+marker2.color.a = 1.0; // Don't forget to set the alpha!
+marker2.color.r = 1.0;
+marker2.color.g = 0.0;
+marker2.color.b = 0.0;
+vis_pub1.publish( marker2 );
+marker3.header.frame_id = "base_link";
+marker3.header.stamp = ros::Time();
+marker3.ns = "my_namespace";
+marker3.id = 2;
+marker3.type = visualization_msgs::Marker::ARROW;
+marker3.action = visualization_msgs::Marker::ADD;
 
- marker4.points.resize(2);
-     marker4.points[0].x = marker_locA(0,0);
-     marker4.points[0].y = marker_locA(0,1);
-     marker4.points[0].z = marker_locA(0,2);
-     marker4.points[1].x = marker_locA(3,0);
-     marker4.points[1].y = marker_locA(3,1);
-     marker4.points[1].z = marker_locA(3,2);
-marker4.scale.x = m_size;
-marker4.scale.y = m_size;
-marker4.scale.z = m_size;
-marker4.color.a = 1.0; // Don't forget to set the alpha!
-marker4.color.r = 0.0;
-marker4.color.g = 1.0;
-marker4.color.b = 0.0;
-vis_pub3.publish( marker4 );
+ marker3.points.resize(2);
+     marker3.points[0].x = marker_locB(0,0);
+     marker3.points[0].y = marker_locB(0,1);
+     marker3.points[0].z = marker_locB(0,2);
+     marker3.points[1].x = marker_locB(2,0);
+     marker3.points[1].y = marker_locB(2,1);
+     marker3.points[1].z = marker_locB(2,2);
+marker3.scale.x = m_size;
+marker3.scale.y = m_size;
+marker3.scale.z = m_size;
+marker3.color.a = 1.0; // Don't forget to set the alpha!
+marker3.color.r = 0.0;
+marker3.color.g = 0.0;
+marker3.color.b = 1.0;
+vis_pub2.publish( marker3 );
+Eigen::Matrix4f transformAB = transformA*transformB.inverse();
+pcl::transformPointCloud (*cloudB, *cloudB_aligned2, transformAB);
+pcl::transformPointCloud (*cloudB_aligned2, *cloudB_aligned, transformAA);
+   sensor_msgs::PointCloud2 output2;
+  pcl::toROSMsg(*cloudB_aligned, output2);
+output2.header.frame_id = "base_link";
+output2.header.stamp = ros::Time::now();
+  pub1.publish (output2);
+  pcl::toROSMsg(*cloudC, output5);
+output5.header.frame_id = "base_link";
+output5.header.stamp = ros::Time::now();
 
+  pub4.publish (output5);
+ros::spinOnce();
+*/transformC = locate_marker(cloudC, marker_locC);
+
+  pcl::toROSMsg(*cloudC, output5);
+output5.header.frame_id = "base_link";
+output5.header.stamp = ros::Time::now();
+
+  pub4.publish (output5);
+marker1.header.frame_id = "base_link";
+marker1.header.stamp = ros::Time();
+marker1.ns = "my_namespace";
+marker1.id = 0;
+marker1.type = visualization_msgs::Marker::SPHERE;
+marker1.action = visualization_msgs::Marker::ADD;
+marker1.pose.position.x = marker_locC(0,0);
+marker1.pose.position.y = marker_locC(0,1);
+marker1.pose.position.z = marker_locC(0,2);
+marker1.pose.orientation.x = 0.0;
+marker1.pose.orientation.y = 0.0;
+marker1.pose.orientation.z = 0.0;
+marker1.pose.orientation.w = 1.0;
+marker1.scale.x = 0.1;
+marker1.scale.y = 0.1;
+marker1.scale.z = 0.1;
+marker1.color.a = 1.0; // Don't forget to set the alpha!
+marker1.color.r = 1.0;
+marker1.color.g = 1.0;
+marker1.color.b = 1.0;
+vis_pub.publish( marker1 );
+marker2.header.frame_id = "base_link";
+marker2.header.stamp = ros::Time();
+marker2.ns = "my_namespace";
+marker2.id = 1;
+marker2.type = visualization_msgs::Marker::ARROW;
+marker2.action = visualization_msgs::Marker::ADD;
+
+ marker2.points.resize(2);
+     marker2.points[0].x = marker_locC(0,0);
+     marker2.points[0].y = marker_locC(0,1);
+     marker2.points[0].z = marker_locC(0,2);
+     marker2.points[1].x = marker_locC(1,0);
+     marker2.points[1].y = marker_locC(1,1);
+     marker2.points[1].z = marker_locC(1,2);
+marker2.scale.x = m_size;
+marker2.scale.y = m_size;
+marker2.scale.z = m_size;
+marker2.color.a = 1.0; // Don't forget to set the alpha!
+marker2.color.r = 1.0;
+marker2.color.g = 0.0;
+marker2.color.b = 0.0;
+vis_pub1.publish( marker2 );
+marker3.header.frame_id = "base_link";
+marker3.header.stamp = ros::Time();
+marker3.ns = "my_namespace";
+marker3.id = 2;
+marker3.type = visualization_msgs::Marker::ARROW;
+marker3.action = visualization_msgs::Marker::ADD;
+
+ marker3.points.resize(2);
+     marker3.points[0].x = marker_locC(0,0);
+     marker3.points[0].y = marker_locC(0,1);
+     marker3.points[0].z = marker_locC(0,2);
+     marker3.points[1].x = marker_locC(2,0);
+     marker3.points[1].y = marker_locC(2,1);
+     marker3.points[1].z = marker_locC(2,2);
+marker3.scale.x = m_size;
+marker3.scale.y = m_size;
+marker3.scale.z = m_size;
+marker3.color.a = 1.0; // Don't forget to set the alpha!
+marker3.color.r = 0.0;
+marker3.color.g = 0.0;
+marker3.color.b = 1.0;
+vis_pub2.publish( marker3 );
+Eigen::Matrix4f transformAC = transformA*transformC.inverse();
+pcl::transformPointCloud (*cloudC, *cloudC_aligned2, transformAC);
+pcl::transformPointCloud (*cloudC_aligned2, *cloudC_aligned, transformAA);
+   sensor_msgs::PointCloud2 output3;
+*cloudfinal_aligned = *cloudA_aligned+*cloudC_aligned;  
+  pcl::toROSMsg(*cloudfinal_aligned, output3);
+output3.header.frame_id = "base_link";
+output3.header.stamp = ros::Time::now();
+  pub2.publish (output3);
+ros::spinOnce();
+transformD = locate_marker(cloudD, marker_locD);
+marker1.header.frame_id = "base_link";
+marker1.header.stamp = ros::Time();
+marker1.ns = "my_namespace";
+marker1.id = 0;
+marker1.type = visualization_msgs::Marker::SPHERE;
+marker1.action = visualization_msgs::Marker::ADD;
+marker1.pose.position.x = marker_locD(0,0);
+marker1.pose.position.y = marker_locD(0,1);
+marker1.pose.position.z = marker_locD(0,2);
+marker1.pose.orientation.x = 0.0;
+marker1.pose.orientation.y = 0.0;
+marker1.pose.orientation.z = 0.0;
+marker1.pose.orientation.w = 1.0;
+marker1.scale.x = 0.1;
+marker1.scale.y = 0.1;
+marker1.scale.z = 0.1;
+marker1.color.a = 1.0; // Don't forget to set the alpha!
+marker1.color.r = 1.0;
+marker1.color.g = 1.0;
+marker1.color.b = 1.0;
+vis_pub.publish( marker1 );
+marker2.header.frame_id = "base_link";
+marker2.header.stamp = ros::Time();
+marker2.ns = "my_namespace";
+marker2.id = 1;
+marker2.type = visualization_msgs::Marker::ARROW;
+marker2.action = visualization_msgs::Marker::ADD;
+
+ marker2.points.resize(2);
+     marker2.points[0].x = marker_locD(0,0);
+     marker2.points[0].y = marker_locD(0,1);
+     marker2.points[0].z = marker_locD(0,2);
+     marker2.points[1].x = marker_locD(1,0);
+     marker2.points[1].y = marker_locD(1,1);
+     marker2.points[1].z = marker_locD(1,2);
+marker2.scale.x = m_size;
+marker2.scale.y = m_size;
+marker2.scale.z = m_size;
+marker2.color.a = 1.0; // Don't forget to set the alpha!
+marker2.color.r = 1.0;
+marker2.color.g = 0.0;
+marker2.color.b = 0.0;
+vis_pub1.publish( marker2 );
+marker3.header.frame_id = "base_link";
+marker3.header.stamp = ros::Time();
+marker3.ns = "my_namespace";
+marker3.id = 2;
+marker3.type = visualization_msgs::Marker::ARROW;
+marker3.action = visualization_msgs::Marker::ADD;
+
+ marker3.points.resize(2);
+     marker3.points[0].x = marker_locD(0,0);
+     marker3.points[0].y = marker_locD(0,1);
+     marker3.points[0].z = marker_locD(0,2);
+     marker3.points[1].x = marker_locD(2,0);
+     marker3.points[1].y = marker_locD(2,1);
+     marker3.points[1].z = marker_locD(2,2);
+marker3.scale.x = m_size;
+marker3.scale.y = m_size;
+marker3.scale.z = m_size;
+marker3.color.a = 1.0; // Don't forget to set the alpha!
+marker3.color.r = 0.0;
+marker3.color.g = 0.0;
+marker3.color.b = 1.0;
+vis_pub2.publish( marker3 );
+   sensor_msgs::PointCloud2 output4;
+Eigen::Matrix4f transformAD = transformA*transformD.inverse();
+pcl::transformPointCloud (*cloudD, *cloudD_aligned2, transformAD);
+pcl::transformPointCloud (*cloudD_aligned2, *cloudD_aligned, transformAA);
+
+  pcl::toROSMsg(*cloudD, output5);
+output5.header.frame_id = "base_link";
+output5.header.stamp = ros::Time::now();
+
+  pub4.publish (output5);
+*cloudfinal_aligned = *cloudfinal_aligned + *cloudD_aligned;
+  pcl::toROSMsg(*cloudfinal_aligned, output4);
+output4.header.frame_id = "base_link";
+output4.header.stamp = ros::Time::now();
+
+  pub3.publish (output4);
+ros::spinOnce();
 ////////////////////////////////////////
 
 
-   sensor_msgs::PointCloud2 output1;
-  pcl::toROSMsg(*cloudA, output1);
+  pcl::toROSMsg(*cloudA_aligned, output1);
 output1.header.frame_id = "base_link";
 output1.header.stamp = ros::Time::now();
- /*  sensor_msgs::PointCloud2 output2;
-  pcl::toROSMsg(*cloudB, output2);
+sensor_msgs::PointCloud2 output2;
+  pcl::toROSMsg(*cloudB_aligned, output2);
 output2.header.frame_id = "base_link";
 output2.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output3;
-  pcl::toROSMsg(*cloudC, output3);
-output3.header.frame_id = "base_link";
-output3.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output4;
-  pcl::toROSMsg(*cloudD, output4);
+  pcl::toROSMsg(*cloudD_aligned, output4);
 output4.header.frame_id = "base_link";
 output4.header.stamp = ros::Time::now();
-   sensor_msgs::PointCloud2 output5;
-  pcl::toROSMsg(*cloudA_aligned, output5);
-output5.header.frame_id = "base_link";
-output5.header.stamp = ros::Time::now();
   
-
-*/
-
-
-
-
- /* 
-   sensor_msgs::PointCloud2 output1;
-  pcl::toROSMsg(*temp1, output1);
-output1.header.frame_id = "base_link";
-   sensor_msgs::PointCloud2 output2;
-  pcl::toROSMsg(*temp2, output2);
-output2.header.frame_id = "base_link";
-   sensor_msgs::PointCloud2 output3;
-  pcl::toROSMsg(*temp3, output3);
-output3.header.frame_id = "base_link";
-   sensor_msgs::PointCloud2 output4;
-  pcl::toROSMsg(*temp4, output4);
-output4.header.frame_id = "base_link";
+  pub1.publish (output1);
+  pub2.publish (output2);
+  pub3.publish (output4);
 
 
-    sensor_msgs::PointCloud2 output5;
- pcl::toROSMsg(*target4, output5);
-output5.header.frame_id = "base_link";
-*/
-// Publish the data
-  pub.publish (output1);
 ros::spinOnce();
 std::cout << "Done" << std::endl;
+
 
 }
