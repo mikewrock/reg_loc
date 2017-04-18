@@ -92,7 +92,7 @@ float normal_distance_weight2;
 float eps_angle;
 bool optimize_coefficients;
 bool optimize_coefficients2;
-bool reco;
+bool reco, downsample;
 
 void callback(registration_localization::SEGConfig &config, uint32_t level) {
   ROS_INFO("Reconfigure Request:");
@@ -109,6 +109,7 @@ eps_angle = config.eps_angle;
 leaf_size = config.leaf_size;
 optimize_coefficients = config.optimize_coefficients;
 optimize_coefficients2 = config.optimize_coefficients2;
+downsample = config.skip_downsample;
 
 }
 
@@ -137,6 +138,8 @@ main (int argc, char** argv)
   f = boost::bind(&callback, _1, _2);
   server.setCallback(f);
 
+std_msgs::String filename;    
+
     std::stringstream ss;
     ss << "/home/mike/marker/" << argv[1];
 
@@ -158,6 +161,8 @@ ROS_INFO("LEAF %f",leaf_size);
 ROS_INFO("k %d",k_search);
 
 
+pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_save (new pcl::PointCloud<pcl::PointXYZI>);
+
 reco = false;
 while(ros::ok()){
   pcl::toROSMsg(*cloudA, output);
@@ -174,9 +179,11 @@ pcl::toPCLPointCloud2 ( *cloudA,*cloud_blob);
 
   // Convert to the templated PointCloud
   pcl::fromPCLPointCloud2 (*cloud_filtered_blob, *cloud_filtered);
-
   std::cerr << "PointCloud after filtering: " << cloud_filtered->width * cloud_filtered->height << " data points." << std::endl;
-
+if(downsample){
+cloud_filtered.swap(cloudA);
+  std::cerr << "using " << cloud_filtered->width * cloud_filtered->height << " data points." << std::endl;
+}
   pcl::toROSMsg(*cloud_filtered, output1);
 output1.header.frame_id = "base_link";
 output1.header.stamp = ros::Time::now();
@@ -216,7 +223,7 @@ ros::spinOnce();
 
   // Create the normal estimation class, and pass the input dataset to it
   pcl::NormalEstimation<pcl::PointXYZI, pcl::Normal> ne;
-  ne.setInputCloud (cloud_filtered);
+ ne.setInputCloud (cloud_filtered);
 
 ne.setSearchSurface (cloudA);
   // Create an empty kdtree representation, and pass it to the normal estimation object.
@@ -239,7 +246,6 @@ ne.setSearchSurface (cloudA);
   ne.compute (*cloud_normals);
 
 
-  
 
 int ctr = 0;
 while(ctr < 30 && reco == false && ros::ok()){
@@ -311,7 +317,15 @@ output3.header.stamp = ros::Time::now();
   pcl::toROSMsg(*cloud_filtered, output1);
 output1.header.frame_id = "base_link";
 output1.header.stamp = ros::Time::now();
-
+if(argc > 2){
+//Populate the PCL pointcloud with the ROS message
+std::stringstream ss2;
+    ss2 << "/home/mike/marker/" << argv[2] << ctr << ".pcd";
+std_msgs::String filename;
+filename.data = ss2.str();
+  pcl::io::savePCDFileASCII (filename.data.c_str(), *cloud_filtered);
+ROS_INFO("Saved to %s", filename.data.c_str());
+}
 pub1.publish(output1);
 pub2.publish(output2);
 pub3.publish(output3);
